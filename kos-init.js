@@ -9,6 +9,24 @@ let _spotlightInput   = null;
 let _spotlightGrid    = null;
 let _filterRaf        = null;   /* rAF handle for debounced filter */
 
+// --- FIRST BOOT AUTO-OPEN LOGIC ---
+// Check if this is the user's first time entering the homescreen
+if (!localStorage.getItem('kos_first_boot_complete')) {
+    // Check if the Window Manager and launch method are available
+    if (typeof WM !== 'undefined' && typeof WM.launch === 'function') {
+        // Launch the Release Notes app using its unique manifest ID
+        WM.launch('releasenotes'); 
+        
+        // Set the flag in localStorage so this block never runs again
+        localStorage.setItem('kos_first_boot_complete', 'true');
+        
+        // Optional: Show a small toast notification welcoming the user
+        if (typeof showToast === 'function') {
+            showToast('Welcome to KOS Ultimate 2026!');
+        }
+    }
+}
+// ----------------------------------
 /* ─── Spotlight Search Logic ─── */
 function buildSpotlightGrid() {
   if (!_spotlightGrid) _spotlightGrid = document.getElementById('spotlight-grid');
