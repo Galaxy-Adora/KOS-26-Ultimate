@@ -419,3 +419,53 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
   }
 
 })();
+
+/* ─── Login Password Patch ───────────────────────────────────────
+   Wraps the global attemptLogin() (defined in kos-kernel.js) to
+   support a user-defined password persisted in localStorage.
+
+   Behaviour:
+   • If no custom password has ever been saved → falls through to
+     the original kernel logic unchanged (default KOS login).
+   • If a custom password exists → validates against it here and
+     transitions to the desktop on success, shows an inline error
+     on failure.  The original kernel function is NOT called in
+     this branch so there is no double-check.
+─────────────────────────────────────────────────────────────────── */
+(function patchLoginPassword() {
+  /* Key shared with UI Manager — do not change without updating both files */
+  const KOS_PW_KEY = 'kos_login_password';
+
+  /* Grab the original before we overwrite it */
+  const _origLogin = window.attemptLogin;
+
+  window.attemptLogin = function () {
+    const stored = localStorage.getItem(KOS_PW_KEY);
+
+    /* ── No custom password saved → original kernel handles it ── */
+    if (stored === null) return _origLogin && _origLogin();
+
+    const box  = document.getElementById('passwordBox');
+    const err  = document.getElementById('loginError');
+    const card = document.querySelector('.login-card');
+    if (!box) return;
+
+    if (box.value === stored) {
+      /* ✓ Correct — clear field, remove any error, go to desktop */
+      box.value = '';
+      if (err) err.textContent = '';
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-desktop')?.classList.add('active');
+    } else {
+      /* ✗ Wrong — show error and shake the card */
+      if (err) err.textContent = 'Incorrect password. Please try again.';
+      box.value = '';
+      box.focus();
+      if (card) {
+        card.classList.remove('login-shake');
+        void card.offsetWidth;          /* force reflow to restart animation */
+        card.classList.add('login-shake');
+      }
+    }
+  };
+})();
