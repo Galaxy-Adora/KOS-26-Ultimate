@@ -20,6 +20,54 @@ const RELEASES = [
 
   /* ── Latest release — always first ── */
   {
+    version:  'Alpha 7',
+    date:     'May 21, 2026',
+    tag:      'Performance Update',
+    tagColor: 'green',
+    sections: [
+      {
+        title: '⚡ Performance',
+        items: [
+          'Task Manager now uses in-place DOM updates — existing rows are patched instead of destroyed and rebuilt on every refresh tick',
+          'Task Manager polling interval increased from 3s to 4s, reducing unnecessary main-thread work by 25%',
+          'Task Manager KOSBus listeners debounced via requestAnimationFrame so rapid app state changes no longer flood the process list',
+          'Task Manager element references are now cached once on init instead of queried on every refresh cycle',
+          'Task Manager process list rebuilt using DocumentFragment, avoiding a full subtree parse on each tick',
+          'Spotlight search filter debounced via requestAnimationFrame — redundant DOM walks on rapid keystrokes are eliminated',
+          'Window session saves debounced to 400ms — rapid actions like dragging and quick-open no longer trigger repeated localStorage writes',
+          'Photos app now stores images as ArrayBuffer (IDB v2) instead of base64, significantly reducing memory overhead',
+          'Photos app metadata kept in RAM separately from image data — raw blobs are never held in memory simultaneously',
+          'Photos app LRU blob cache capped at 40 object URLs — evicted URLs are immediately revoked to prevent memory leaks',
+          'Photos app uses IntersectionObserver for lazy loading — only visible thumbnails are fetched from IndexedDB',
+          'App stylesheets are now injected lazily on first launch instead of being linked at boot, reducing initial page load',
+          'Google Fonts and FontAwesome loaded non-render-blocking using the media=print swap trick — no longer delays first paint',
+        ],
+      },
+      {
+        title: '🚀 New Features',
+        items: [
+          'Mobile blocker screen added — devices with screen width below 768px now see a dedicated unsupported device notice instead of a broken UI',
+          'Notes app now fully synced with Files app — documents created in Notes appear in Files and vice versa',
+          'About KOS now displays live system info including CPU core count, device memory, screen resolution, device pixel ratio, and browser engine',
+          'KOS Studio now supports editing system app CSS and HTML live via the new System Apps tab',
+          'Service Worker upgraded to cache-first strategy (kos-v2) — KOS can now run fully offline after the first load',
+        ],
+      },
+      {
+        title: '✨ Improvements',
+        items: [
+          'Window Manager minimum window size enforced at 300×200px to prevent unusable collapsed windows',
+          'Dock rebuilds automatically when KOS Studio publishes or removes a custom app via kos:registry-changed event',
+          'Context menu zone resolution order tightened — blocked zones, app menus, custom zones, and built-in zones now resolve in strict priority order',
+          'winSize() responsive sizing helper now clamps window height to viewport before applying aspect ratio, preventing off-screen windows on smaller displays',
+        ],
+      },
+    ],
+  },
+
+  /* ── Previous releases ── */
+
+  {
     version:  'Alpha 6',
     date:     'April 3, 2026',
     tag:      'Alpha Release',
@@ -28,18 +76,12 @@ const RELEASES = [
       {
         title: '🚀 New Features',
         items: [
-          ,
-          'Added App named Files which users can now upload audio video and txt according to the folder ',
+          'Added App named Files which users can now upload audio video and txt according to the folder',
           'Added App named Notes where users can now create and edit uploaded txt files',
-  
-          ,
         ],
       },
-     
     ],
   },
-
-  /* ── Previous release ── */
 
   {
     version:  'Alpha 5',
@@ -54,7 +96,6 @@ const RELEASES = [
           'Added App named Release Notes',
           'Added App named About KOS',
           'apps not in dock now appears in dock when the app is opened',
-          ,
         ],
       },
       {
@@ -62,13 +103,12 @@ const RELEASES = [
         items: [
           'Now users can see the release notes in the os',
           'Now users can see the KOS Software information in the os',
-          
         ],
       },
       {
         title: '🐛 Bug Fixes',
         items: [
-         'Fixed bug in spotlight that goes below screen so that user cannot see the apps',
+          'Fixed bug in spotlight that goes below screen so that user cannot see the apps',
         ],
       },
     ],
@@ -84,7 +124,6 @@ const RELEASES = [
         items: [
           'Complete code for the OS is rewritten for more os stability and better feature/app integrations',
           'Better ui enhancements for topnav  With smooth animations',
-          
         ],
       },
     ],
@@ -100,20 +139,18 @@ const RELEASES = [
         title: '🚀 New Features',
         items: [
           'New app called calculator',
-          
-          
         ],
       },
       {
         title: '🐛 Bug Fixes',
         items: [
-         'Fixed bug of duplicate icons in dock',
+          'Fixed bug of duplicate icons in dock',
         ],
       },
     ],
   },
 
- {
+  {
     version:  'Alpha 3',
     date:     'March 30, 2026',
     tag:      'Feature Update',
@@ -123,10 +160,8 @@ const RELEASES = [
         title: '🚀 New Features',
         items: [
           'New app called KOS Studio for making custom apps for users',
-        
         ],
       },
-      
     ],
   },
   {
@@ -140,13 +175,12 @@ const RELEASES = [
         items: [
           'New app called photos with ability to set wallpaper inside the app',
           'New app called browser to search web',
-          
         ],
       },
-     {
+      {
         title: '🐛 Bug Fixes',
         items: [
-         'Fixed the bootlooping issue in Alpha 1',
+          'Fixed the bootlooping issue in Alpha 1',
         ],
       },
     ],
@@ -162,10 +196,8 @@ const RELEASES = [
         items: [
           'Fresh new ui for KOS',
           'Complete code rewritten',
-          ,
         ],
       },
-     
     ],
   },
 ];
