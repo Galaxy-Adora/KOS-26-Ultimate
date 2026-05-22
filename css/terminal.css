@@ -1,0 +1,107 @@
+/* ==========================================================================
+   KOS Ultimate 2026 — Terminal Style Sheet (Liquid Glass Architecture)
+   ========================================================================== */
+
+.terminal-body-wrap {
+    padding: 0 !important;
+    overflow: hidden !important;
+    height: 100%;
+    width: 100%;
+}
+
+/* Liquid Glass container */
+.term-container {
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Share Tech Mono', monospace, Courier, monospace;
+    font-size: 14px;
+    overflow-y: auto;
+    
+    /* Variable-driven theme fallback matching settings application specs */
+    background: rgba(4, 18, 38, 0.45);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    color: rgba(215, 240, 255, 0.95);
+    
+    /* Premium inner edge reflection highlight */
+    position: relative;
+}
+
+.term-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: 2;
+}
+
+/* Interactivity logs */
+.term-output {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.term-line {
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Custom Text Line Colors */
+.term-line.system-msg { color: #00d4ff; opacity: 0.85; }
+.term-line.user-cmd   { color: #ffca28; }
+.term-line.error-msg  { color: #ff5252; font-weight: bold; }
+
+/* Interactive Input Element Frame */
+.term-input-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.term-prompt {
+    color: #4caf50;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.term-raw-input {
+    flex: 1;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    padding: 0;
+    margin: 0;
+}
+
+/* ==========================================================================
+   Light Mode Adaptive Variable Refactor Overrides
+   ========================================================================== */
+html.light .term-container {
+    background: rgba(242, 242, 243, 0.55);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    color: #1a2638;
+}
+
+html.light .term-container::before {
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .term-line.system-msg { color: #0063af; }
+html.light .term-line.user-cmd   { color: #b26a00; }
+html.light .term-line.error-msg  { color: #c62828; }
+html.light .term-prompt          { color: #2e7d32; }

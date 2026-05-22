@@ -185,6 +185,74 @@ body.dark #kos-snap-ghost {
   box-shadow: 0 0 26px rgba(0, 180, 255, 0.16);
 }
 
+/* ═══ SNAPPED WINDOW TITLEBAR COLLAPSE ═══ */
+/* Mirror the maximized titlebar collapse — hides the app name bar
+   when a window is side-snapped; controls move to the topbar instead */
+.kos-window.win-snapped-left .win-titlebar,
+.kos-window.win-snapped-right .win-titlebar {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-width: 0;
+}
+
+/* ═══ SNAP TOPBAR CONTROLS ═══ */
+/* Left-snapped app → controls pinned to the far-left of the topbar.
+   Right-snapped app → controls pinned to the far-right of the topbar.
+   Entrance: slides down from just above the topbar with a spring overshoot.
+   Exit:     fades + slides back up (driven by removing .snap-ctrl-visible). */
+#topbar-snap-left,
+#topbar-snap-right {
+  position: fixed;
+  top: 0;
+  height: 54px;           /* must match WM.TOPBAR_H */
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 9999;
+  padding: 0 10px;
+
+  /* Hidden state */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px) scale(0.92);
+  transition:
+    opacity   0.26s ease,
+    transform 0.32s cubic-bezier(0.34, 1.20, 0.64, 1);
+}
+
+#topbar-snap-left  { left: 0; }
+#topbar-snap-right { right: 0; }
+
+/* Visible state — entrance */
+#topbar-snap-left.snap-ctrl-visible,
+#topbar-snap-right.snap-ctrl-visible {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0) scale(1);
+}
+
+/* Subtle divider line between the controls and the rest of the topbar */
+#topbar-snap-left.snap-ctrl-visible {
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+#topbar-snap-right.snap-ctrl-visible {
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+}
+body.dark #topbar-snap-left.snap-ctrl-visible {
+  border-right-color: rgba(255, 255, 255, 0.10);
+}
+body.dark #topbar-snap-right.snap-ctrl-visible {
+  border-left-color: rgba(255, 255, 255, 0.10);
+}
+
+/* ── Both panels present → stagger exit slightly so they don't race ── */
+#topbar-snap-left  { transition-delay: 0ms; }
+#topbar-snap-right { transition-delay: 0ms; }
+
+/* Reuse existing .win-ctrl-btn styles — no extra rules needed */
+
 /* ═══ SNAPPED WINDOW STATES ═══ */
 /* Remove border-radius when flush against an edge */
 .kos-window.win-snapped-left  { border-radius: 0 10px 10px 0; }

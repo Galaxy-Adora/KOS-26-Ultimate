@@ -13,7 +13,7 @@ const _SECTS = [
   { id:'appearance',    label:'Appearance',          icon:'fa-palette',          color:'#FF6B35', group:'Personal' },
   { id:'apps',          label:'Apps',                icon:'fa-table-cells',      color:'#007AFF', group:'Personal' },
   { id:'security',      label:'Password & Security', icon:'fa-shield-halved',    color:'#34C759', group:'Personal' },
-  { id:'display',       label:'Display',             icon:'fa-display',          color:'#5E5CE6', group:'System',  soon:true },
+  { id:'display',       label:'Display',             icon:'fa-display',          color:'#5E5CE6', group:'System'           },
   { id:'notifications', label:'Notifications',       icon:'fa-bell',             color:'#FF9F0A', group:'System',  soon:true },
   { id:'privacy',       label:'Privacy & Safety',    icon:'fa-eye-slash',        color:'#30D158', group:'System',  soon:true },
   { id:'accessibility', label:'Accessibility',       icon:'fa-universal-access', color:'#0A84FF', group:'System',  soon:true },
@@ -33,8 +33,11 @@ const _IDX = [
   { s:'security',   label:'Set Password',       sub:'Create a new login password (min 6 characters)'  },
   { s:'security',   label:'Remove Password',    sub:'Remove custom password, restore system default'  },
   { s:'about',      label:'About KOS',          sub:'System version, storage info and credits'        },
-  { s:'display',    label:'Brightness',         sub:'Adjust display brightness level'                 },
-  { s:'display',    label:'Night Mode',         sub:'Reduce blue light after sunset'                  },
+  { s:'display',    label:'Screen Zoom',         sub:'Scale the entire OS interface from 50% to 250%'  },
+  { s:'display',    label:'Text Size',           sub:'Adjust system font size across 6 levels'         },
+  { s:'display',    label:'Bold Text',           sub:'Increase font weight across the entire system'   },
+  { s:'display',    label:'Brightness',          sub:'Adjust the display brightness level'             },
+  { s:'display',    label:'Reset Display',       sub:'Restore all display settings to defaults'        },
   { s:'notifications', label:'Do Not Disturb',  sub:'Silence all notifications'                       },
   { s:'privacy',    label:'Usage Analytics',    sub:'Share anonymous usage data with KOS team'        },
   { s:'accessibility', label:'Reduce Motion',   sub:'Minimise animation and motion effects'           },
@@ -152,6 +155,7 @@ window.KOSApps.uimanager = {
       appearance: () => this._renderAppearance(),
       apps:       () => this._renderApps(),
       security:   () => this._renderSecurity(),
+      display:    () => this._renderDisplay(),
       about:      () => this._renderAbout(),
     }[id] || (() => this._renderSoon(s)))();
   },
@@ -333,6 +337,129 @@ window.KOSApps.uimanager = {
         <div class="st-tip-row">
           <div class="st-tip-ico warn"><i class="fa-solid fa-triangle-exclamation"></i></div>
           <span>If you forget your password, open DevTools → Application → Local Storage and remove <code>kos_login_password</code>.</span>
+        </div>
+      </div>`;
+  },
+
+  /* ─── Display ─── */
+  _renderDisplay() {
+    /* Safe reads — KOSDisplay may not exist if script failed to load */
+    const D          = window.KOSDisplay;
+    const zoom       = D ? D.get.zoom()       : 100;
+    const textSize   = D ? D.get.textSize()   : 3;
+    const bold       = D ? D.get.bold()       : false;
+    const brightness = D ? D.get.brightness() : 100;
+
+    const LEVELS = ['XS','S','M','L','XL','XXL'];
+
+    return `
+      <div class="st-sec-head">
+        <div class="st-sec-ico" style="background:#5E5CE6">
+          <i class="fa-solid fa-display"></i>
+        </div>
+        <div>
+          <div class="st-sec-title">Display</div>
+          <div class="st-sec-sub">Scale, text size and brightness — applied system-wide</div>
+        </div>
+      </div>
+
+      <!-- ── Brightness ── -->
+      <div class="st-card">
+        <div class="st-clabel">Brightness</div>
+        <div class="dp-slider-row">
+          <i class="fa-solid fa-sun dp-sun-sm"></i>
+          <input type="range" class="dp-slider" id="dp-brightness"
+                 min="10" max="100" step="5" value="${brightness}"
+                 oninput="KOSDisplay.setBrightness(+this.value);
+                          document.getElementById('dp-bright-val').textContent=this.value+'%'">
+          <i class="fa-solid fa-sun dp-sun-lg"></i>
+          <span class="dp-val" id="dp-bright-val">${brightness}%</span>
+        </div>
+      </div>
+
+      <!-- ── Screen Zoom ── -->
+      <div class="st-card">
+        <div class="st-clabel">Screen Zoom</div>
+        <div class="dp-presets">
+          ${[75,100,125,150,200].map(p=>`
+            <button class="dp-preset ${zoom===p?'active':''}"
+                    onclick="KOSDisplay.setZoom(${p});
+                             document.querySelectorAll('.dp-preset').forEach(b=>b.classList.toggle('active',+b.dataset.v===${p}));
+                             document.getElementById('dp-zoom-slider').value=${p};
+                             document.getElementById('dp-zoom-val').textContent='${p}%'"
+                    data-v="${p}">${p}%</button>`).join('')}
+        </div>
+        <div class="dp-slider-row" style="margin-top:10px">
+          <span class="dp-edge-lbl">50%</span>
+          <input type="range" class="dp-slider" id="dp-zoom-slider"
+                 min="50" max="250" step="5" value="${zoom}"
+                 oninput="KOSDisplay.setZoom(+this.value);
+                          document.getElementById('dp-zoom-val').textContent=this.value+'%';
+                          document.querySelectorAll('.dp-preset').forEach(b=>b.classList.toggle('active',+b.dataset.v===+this.value))">
+          <span class="dp-edge-lbl">250%</span>
+          <span class="dp-val" id="dp-zoom-val">${zoom}%</span>
+        </div>
+        <div class="st-tip-row">
+          <div class="st-tip-ico info"><i class="fa-solid fa-circle-info"></i></div>
+          <span>Zoom scales the entire OS interface — windows, dock and all panels. Default is 100%.</span>
+        </div>
+      </div>
+
+      <!-- ── Text Size ── -->
+      <div class="st-card">
+        <div class="st-clabel">Text Size</div>
+        <div class="dp-textsize-wrap">
+          <span class="dp-tsa sm" aria-hidden="true">A</span>
+          <div class="dp-ts-track">
+            ${[1,2,3,4,5,6].map(l=>`
+              <button class="dp-ts-dot ${textSize===l?'active':''}"
+                      data-lv="${l}"
+                      title="${LEVELS[l-1]}"
+                      onclick="KOSDisplay.setTextSize(${l});
+                               document.querySelectorAll('.dp-ts-dot').forEach(d=>d.classList.toggle('active',+d.dataset.lv===${l}));
+                               document.getElementById('dp-ts-preview').textContent='${LEVELS[l-1]}  ·  ${['11px','13px','15px','17px','19px','22px'][l-1]}'">
+              </button>`).join('')}
+          </div>
+          <span class="dp-tsa lg" aria-hidden="true">A</span>
+        </div>
+        <div class="dp-ts-preview-row">
+          <span id="dp-ts-preview">${LEVELS[textSize-1]}  ·  ${['11px','13px','15px','17px','19px','22px'][textSize-1]}</span>
+          <span class="dp-ts-sample" id="dp-ts-sample"
+                style="font-size:${[11,13,15,17,19,22][textSize-1]}px">
+            The quick brown fox
+          </span>
+        </div>
+      </div>
+
+      <!-- ── Accessibility ── -->
+      <div class="st-card">
+        <div class="st-clabel">Accessibility</div>
+        <div class="st-row">
+          <div class="st-rl">
+            <div class="st-rlabel">Bold Text</div>
+            <div class="st-rsub">Increases font weight across windows, dock and menus</div>
+          </div>
+          <div class="toggle-switch ${bold?'on':''}" id="dp-bold-toggle"
+               onclick="const on=!this.classList.contains('on');
+                        this.classList.toggle('on',on);
+                        KOSDisplay.setBold(on)">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Reset ── -->
+      <div class="st-card">
+        <div class="st-clabel">Reset</div>
+        <div class="st-row">
+          <div class="st-rl">
+            <div class="st-rlabel">Reset Display Settings</div>
+            <div class="st-rsub">Restores zoom (100%), text size (M), brightness (100%) and disables bold</div>
+          </div>
+          <button class="dp-reset-btn"
+                  onclick="KOSDisplay.reset(); KOSApps.uimanager.navigate('display')">
+            Reset
+          </button>
         </div>
       </div>`;
   },

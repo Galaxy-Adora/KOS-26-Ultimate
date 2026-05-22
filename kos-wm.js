@@ -94,6 +94,8 @@ const WM = {
     if (!w) return;
     /* Clear topbar controls if this was the maximized window */
     if (w.maximized) this._clearTopbarControls();
+    /* Clear snap topbar controls if this was a snapped window */
+    if (w.snapped) this._clearSnapControls(id);
     w.el.classList.remove('win-open', 'win-minimized', 'win-maximized',
                           'win-snapped-left', 'win-snapped-right');
     w.open = false; w.minimized = false; w.maximized = false; w.snapped = null;
@@ -113,6 +115,10 @@ const WM = {
     if (w.maximized) {
       this._clearTopbarControls();
     }
+    /* If snapped, hide snap topbar controls (keep w.snapped so restore re-injects) */
+    if (w.snapped) {
+      this._clearSnapControls(id);
+    }
     w.el.classList.add('win-minimized');
     w.minimized = true;
     this._syncDockHide();
@@ -128,6 +134,10 @@ const WM = {
     /* Re-inject topbar controls if restoring a maximized window */
     if (w.maximized) {
       this._injectTopbarControls(id);
+    }
+    /* Re-inject snap topbar controls if restoring a snapped window */
+    if (w.snapped) {
+      this._injectSnapControls(id, w.snapped);
     }
     this.focus(id);
     this._syncDockHide();
@@ -335,6 +345,72 @@ const WM = {
     if (ctrl) {
       ctrl.classList.remove('twc-visible');
       setTimeout(() => { ctrl.parentNode && ctrl.remove(); }, 350);
+    }
+  },
+
+  /* ─────────────────────────────────────────────────────────────
+     SNAP TOPBAR CONTROLS
+     When a window is side-snapped, its titlebar collapses and
+     floating controls appear in the topbar on the matching edge:
+       left-snapped  window → controls at far-left  of topbar
+       right-snapped window → controls at far-right of topbar
+     ───────────────────────────────────────────────────────────── */
+  _injectSnapControls(id, zone) {
+    const panelId = zone === 'left' ? 'topbar-snap-left' : 'topbar-snap-right';
+
+    let ctrl = document.getElementById(panelId);
+    if (!ctrl) {
+      ctrl = document.createElement('div');
+      ctrl.id = panelId;
+      document.body.appendChild(ctrl);
+    }
+    ctrl.dataset.winId = id;
+    ctrl.dataset.zone  = zone;
+
+    ctrl.innerHTML = `
+      <button class="win-ctrl-btn twc-btn" data-action="minimize" title="Minimize">
+        <i class="fa-solid fa-minus"></i>
+      </button>
+      <button class="win-ctrl-btn twc-btn" data-action="unsnap" title="Restore">
+        <i class="fa-solid fa-window-restore"></i>
+      </button>
+      <button class="win-ctrl-btn twc-btn" data-action="close" title="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>`;
+
+    ctrl.querySelectorAll('.twc-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const wId    = ctrl.dataset.winId;
+        const action = btn.dataset.action;
+        if (!wId) return;
+        if (action === 'close')    this.close(wId);
+        if (action === 'minimize') this.minimize(wId);
+        if (action === 'unsnap') {
+          /* Restore to pre-snap floating geometry */
+          this._clearSnapControls(wId);
+          this._unsnapWindow(wId);
+          this.focus(wId);
+          this._scheduleSave();
+        }
+      });
+    });
+
+    /* Double-rAF trick for entrance animation (avoids forced reflow) */
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => ctrl.classList.add('snap-ctrl-visible'));
+    });
+  },
+
+  _clearSnapControls(id) {
+    const w = this.registry[id];
+    if (!w?.snapped) return;
+    const panelId = w.snapped === 'left' ? 'topbar-snap-left' : 'topbar-snap-right';
+    const ctrl = document.getElementById(panelId);
+    /* Guard: only remove if this panel belongs to the window being cleared */
+    if (ctrl && ctrl.dataset.winId === id) {
+      ctrl.classList.remove('snap-ctrl-visible');
+      setTimeout(() => { ctrl.parentNode && ctrl.remove(); }, 320);
     }
   },
 
@@ -703,6 +779,11 @@ const WM = {
 
     w.snapped = zone;
     setTimeout(() => w.el.classList.remove('win-animating'), 440);
+
+    /* Inject floating topbar controls on the matching edge slightly after
+       geometry starts animating, so button fade-in feels sequenced */
+    setTimeout(() => this._injectSnapControls(id, zone), 80);
+
     this._scheduleSave();
   },
 
@@ -712,6 +793,9 @@ const WM = {
   _unsnapWindow(id) {
     const w = this.registry[id];
     if (!w || !w.snapped) return;
+
+    /* Clear topbar snap controls for this edge before un-snapping */
+    this._clearSnapControls(id);
 
     w.el.classList.remove('win-snapped-left', 'win-snapped-right');
     w.snapped = null;
