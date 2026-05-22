@@ -1,45 +1,51 @@
 /* ══════════════════════════════════════════════════════════════
    KOS ULTIMATE 2026 — apps/notes.css
-   Liquid Glass & Correct Window Offsets
+   Liquid Glass Layout Overhauls
    ══════════════════════════════════════════════════════════════ */
 
 :root {
   --nt-glass-bg: rgba(255, 255, 255, 0.4);
   --nt-sidebar-bg: rgba(255, 255, 255, 0.2);
-  --nt-border: rgba(0, 0, 0, 0.1);
+  --nt-border: rgba(0, 0, 0, 0.08);
   --nt-text: #1d1d1f;
+  --nt-text-dim: #6e6e73;
   --nt-accent: #007aff;
+  --nt-danger: #ff3b30;
+  --nt-input-fill: rgba(0, 0, 0, 0.04);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --nt-glass-bg: rgba(28, 28, 30, 0.5);
-    --nt-sidebar-bg: rgba(0, 0, 0, 0.3);
-    --nt-border: rgba(255, 255, 255, 0.1);
+    --nt-sidebar-bg: rgba(0, 0, 0, 0.25);
+    --nt-border: rgba(255, 255, 255, 0.08);
     --nt-text: #f5f5f7;
+    --nt-text-dim: #8e8e93;
     --nt-accent: #0a84ff;
+    --nt-danger: #ff453a;
+    --nt-input-fill: rgba(255, 255, 255, 0.06);
   }
 }
 
-/* ─── Root shell (Match Files App Layout) ─── */
+/* ─── Structural Containers ─── */
 .notes-container {
   display: flex;
-  height: calc(100% - 44px); /* 44px gap for topbar */
+  height: calc(100% - 44px);
   width: 100%;
   position: absolute;
-  top: 44px; /* Exact match for Files app UI */
+  top: 44px;
   left: 0;
   background: var(--nt-glass-bg);
-  backdrop-filter: blur(8px) saturate(140%);
-  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
   color: var(--nt-text);
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
 }
 
-/* ─── Sidebar ─── */
+/* ─── Sidebar System ─── */
 .notes-sidebar {
-  width: 280px;
+  width: 290px;
   background: var(--nt-sidebar-bg);
   border-right: 1px solid var(--nt-border);
   display: flex;
@@ -47,117 +53,250 @@
 }
 
 .notes-sidebar-header {
-  padding: 15px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--nt-border);
 }
 
-.notes-search-wrapper {
+.notes-actions-row {
   display: flex;
   gap: 8px;
-  background: rgba(150, 150, 150, 0.1);
-  padding: 5px 10px;
-  border-radius: 10px;
 }
 
-#new-note-name {
-  background: transparent;
+/* ─── Ultra Fluid Controls ─── */
+.liquid-btn {
   border: none;
-  color: var(--nt-text);
-  flex: 1;
   font-size: 13px;
-  outline: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border-radius: 8px;
 }
 
-#create-note-btn {
+.primary-action {
+  flex: 1;
   background: var(--nt-accent);
   color: white;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+}
+.primary-action:hover {
+  filter: brightness(1.1);
+  transform: translateY(-0.5px);
 }
 
+.secondary-action {
+  width: 34px;
+  background: var(--nt-input-fill);
+  color: var(--nt-text);
+}
+.secondary-action:hover {
+  background: rgba(120, 120, 120, 0.2);
+}
+
+.save-action {
+  background: var(--nt-accent);
+  color: white;
+  padding: 0 14px;
+  font-size: 12px;
+}
+.save-action:hover { filter: brightness(1.1); }
+
+.delete-action {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  color: var(--nt-text-dim);
+}
+.delete-action:hover {
+  color: var(--nt-danger);
+  background: rgba(255, 59, 48, 0.1);
+}
+
+/* ─── File Navigation List ─── */
 .notes-list {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 0;
+  padding: 6px 0;
 }
 
 .note-item {
-  padding: 12px 20px;
+  padding: 10px 18px;
+  margin: 2px 8px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
+  transition: background 0.15s, transform 0.1s;
   display: flex;
   align-items: center;
   gap: 12px;
 }
-
-.note-item:hover { background: rgba(120, 120, 120, 0.1); }
+.note-item:hover {
+  background: var(--nt-input-fill);
+}
 .note-item.active {
-  background: rgba(0, 122, 255, 0.15);
-  border-left-color: var(--nt-accent);
+  background: rgba(0, 122, 255, 0.12);
 }
 
-.note-item-title { font-weight: 600; font-size: 14px; }
-.note-item-date { font-size: 11px; opacity: 0.5; margin-top: 2px; }
-.nt-empty { padding: 40px; text-align: center; opacity: 0.4; font-size: 13px; }
+.note-icon-type {
+  font-size: 16px;
+  color: var(--nt-accent);
+  opacity: 0.85;
+}
 
-/* ─── Editor ─── */
+.note-item-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.note-item-title {
+  font-weight: 500;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-item-date {
+  font-size: 11px;
+  color: var(--nt-text-dim);
+  margin-top: 1px;
+}
+
+.nt-empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--nt-text-dim);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* ─── Clean Core Editor Layer ─── */
 .notes-editor {
   flex: 1;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .editor-toolbar {
-  padding: 0 25px;
-  height: 52px;
+  padding: 0 20px;
+  height: 58px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--nt-border);
 }
 
-#active-note-title { font-weight: 600; font-size: 13px; }
+.title-rename-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  max-width: 60%;
+}
+
+.note-title-field {
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--nt-text);
+  outline: none;
+  padding: 4px 6px;
+  border-radius: 4px;
+  width: 100%;
+  transition: background 0.2s;
+}
+.note-title-field:focus {
+  background: var(--nt-input-fill);
+  box-shadow: inset 0 0 0 1px var(--nt-border);
+}
+
+.rename-indicator {
+  font-size: 11px;
+  color: var(--nt-text-dim);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.title-rename-container:hover .rename-indicator {
+  opacity: 0.5;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 #note-textarea {
   flex: 1;
   background: transparent;
   border: none;
-  padding: 30px;
+  padding: 24px;
   color: var(--nt-text);
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.5;
   resize: none;
   outline: none;
 }
 
-.liquid-btn {
-  background: var(--nt-accent);
-  color: white;
-  border: none;
-  padding: 6px 16px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+/* ─── Elegant Placeholder State ─── */
+.editor-placeholder-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
 }
 
-/* ─── Toast ─── */
+.placeholder-icon {
+  font-size: 48px;
+  color: var(--nt-text-dim);
+  opacity: 0.25;
+  margin-bottom: 16px;
+}
+
+.editor-placeholder-screen h3 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.editor-placeholder-screen p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--nt-text-dim);
+  max-width: 280px;
+  line-height: 1.4;
+}
+
+/* ─── Notification UI Toast ─── */
 .nt-toast {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  background: rgba(0,0,0,0.8);
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: white;
   padding: 8px 16px;
-  border-radius: 10px;
+  border-radius: 20px;
   font-size: 12px;
+  font-weight: 400;
   opacity: 0;
+  transform: translateY(10px);
   pointer-events: none;
-  transition: opacity 0.3s;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
-.nt-toast.show { opacity: 1; }
+.nt-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
