@@ -239,6 +239,22 @@ const AppManifest = [
   },
 
   {
+    id        : 'runner',
+    name      : 'Retro Snake Game',
+    iconClass : 'icon-videos',
+    faIcon    : 'fa-solid fa-gamepad',
+    jsPath    : 'apps/runner.js',              // Linked code module script target
+    cssPath   : 'css/apps/runner.css',          // Linked layout styling rules
+    permissions: ['videos', 'audios'],
+    metadata: { showInDock: false, searchable: true, isSystemApp: false },
+    initData: {
+      ...winSize(64, [16, 9]),                 // Fluid canvas responsive design footprints
+      ratio: [16, 9], size: 64,
+      offset: 35, bodyId: 'runner-body',
+    },
+  },
+
+  {
     id        : 'voicerecorder',
     name      : 'Voice Recorder',
     iconClass : 'icon-recorder',

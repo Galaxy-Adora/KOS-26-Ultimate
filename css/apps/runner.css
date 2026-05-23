@@ -1,0 +1,273 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KOS Neo-Retro Snake Game System Stylesheet 
+   High Fidelity Modern Fluid Layout with Transparent Morphic Accent Details
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.snake-app-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background-color: #080b11;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    color: #e2e8f0;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* ── Liquid Glass HUD Top Navigation Panel ── */
+.snake-hud-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    z-index: 10;
+}
+
+.hud-item {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.classic-brand {
+    color: #00ff66;
+    text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+    font-weight: 800;
+}
+
+.hud-label {
+    color: #64748b;
+    margin-right: 4px;
+}
+
+#snake-score-val, #snake-hiscore-val {
+    color: #ffffff;
+    font-family: monospace;
+    font-size: 16px;
+}
+
+.menu-toggle-btn {
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-toggle-btn:hover {
+    background: rgba(0, 255, 102, 0.1);
+    border-color: rgba(0, 255, 102, 0.3);
+    color: #00ff66;
+}
+
+/* ── Fluid Workfield Viewport Frame ── */
+.snake-viewport-area {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    background: radial-gradient(circle at center, #0d1527 0%, #050810 100%);
+    overflow: hidden;
+}
+
+#snake-canvas-matrix {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+/* ── Interactive Translucent Screen Overlays ── */
+.snake-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 7, 13, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 5;
+}
+
+.snake-modal-overlay.active-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 32px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    transform: translateY(10px);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.snake-modal-overlay.active-overlay .modal-card {
+    transform: translateY(0);
+}
+
+.glow-text {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    color: #00ff66;
+    text-shadow: 0 0 15px rgba(0, 255, 102, 0.5);
+    margin: 0 0 8px 0;
+}
+
+.glow-text.gameover-alert {
+    color: #ff3366;
+    text-shadow: 0 0 15px rgba(255, 51, 102, 0.5);
+}
+
+#modal-subline {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+/* ── Parameter Alignment Layout Grid ── */
+.settings-grid {
+    text-align: left;
+    margin-bottom: 28px;
+}
+
+.setting-row {
+    margin-bottom: 16px;
+}
+
+.setting-row label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 6px;
+    letter-spacing: 0.08em;
+}
+
+.setting-row select {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.setting-row select:focus {
+    border-color: rgba(0, 255, 102, 0.4);
+}
+
+/* ── Action Buttons ── */
+.action-btn {
+    width: 100%;
+    background: #00ff66;
+    color: #04070d;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 255, 102, 0.25);
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background: #26ff7d;
+    box-shadow: 0 6px 20px rgba(0, 255, 102, 0.4);
+    transform: translateY(-1px);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+/* ── Score Popup ── */
+#snake-score-popup {
+    position: absolute;
+    pointer-events: none;
+    z-index: 20;
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: 900;
+    color: #00ff66;
+    text-shadow: 0 0 12px rgba(0,255,102,0.8);
+    transform: translateX(-50%);
+}
+
+#snake-score-popup.anim {
+    animation: popFade 0.6s ease-out forwards;
+}
+
+@keyframes popFade {
+    0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-40px) scale(1.5); }
+}
+
+/* ── new hi score blink ── */
+#snake-hiscore-val.hi-blink {
+    animation: hiPulse 0.4s ease-in-out 3;
+}
+
+@keyframes hiPulse {
+    0%, 100% { color: #fff; }
+    50% { color: #f1c40f; text-shadow: 0 0 15px rgba(241,196,15,0.6); }
+}
+
+/* ── END GAME button (secondary/destructive) ── */
+.action-btn.secondary {
+    background: transparent;
+    color: #ff3366;
+    border: 1px solid rgba(255,51,102,0.3);
+    box-shadow: none;
+    margin-top: 8px;
+    padding: 10px;
+    font-size: 12px;
+}
+
+.action-btn.secondary:hover {
+    background: rgba(255,51,102,0.1);
+    border-color: #ff3366;
+    transform: none;
+}
+
+/* ── Pause badge in HUD ── */
+.pause-badge {
+    display: inline;
+    color: #f1c40f;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    animation: pauseBlink 0.8s ease-in-out infinite;
+    margin-left: 8px;
+}
+
+@keyframes pauseBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
