@@ -1,11 +1,5 @@
 /* css/apps/task-mgr.css */
-/* css/apps/task-mgr.css */
-.tm-body { 
-  display: flex;
-  flex-direction: column;
-  gap: 16px; 
-  padding: 24px !important; /* Adds padding to top, right, bottom, and left outer edges */
-}
+.tm-body { gap: 16px; }
 .tm-mem-section { display: flex; flex-direction: column; gap: 10px; }
 .tm-stat-card { background: rgba(0,0,0,0.04); border-radius: 12px; padding: 14px 16px; }
 .tm-stat-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; margin-bottom: 6px; }

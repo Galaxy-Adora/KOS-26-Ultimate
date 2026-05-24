@@ -93,19 +93,13 @@
                     const theme  = document.body.classList.contains('dark') ? 'DARK' : 'LIGHT';
                     const glass  = !document.body.classList.contains('no-glass') ? 'ENABLED' : 'DISABLED';
                     const authMode = _isNoPass() ? 'NO-PASSWORD (auto-login)' : 'PASSWORD PROTECTED';
-                    const _V = (typeof KOS_VERSION !== 'undefined') ? KOS_VERSION : null;
                     return [
                         '⚙  KOS SYSTEM CONFIG DIAGNOSTICS',
-                        `   OS Name           : ${_V ? _V.displayProduct  : 'KOS Ultimate 2026 Edition'}`,
-                        `   Version           : ${_V ? _V.version          : 'Alpha 9'}`,
-                        `   Build             : ${_V ? _V.build            : '9.0.2026'}  [${_V ? _V.buildLabel : 'Alpha'}]`,
-                        `   Released          : ${_V ? _V.releaseDate      : '—'}`,
-                        `   Code Name         : ${_V ? (_V.codeName ?? '—') : '—'}`,
+                        `   Subsystem Version : 9.0.2026-ROOT_UTILITY`,
                         `   Visual Workspace  : ${theme} MODE`,
                         `   Compositor State  : GLASS ${glass}`,
                         `   Auth Mode         : ${authMode}`,
                         `   Execution Context : MAIN AREA / ROOT`,
-                        `   Developer         : ${_V ? _V.developer        : 'Kalapurackal Studios'}`,
                     ];
                 }
             },
