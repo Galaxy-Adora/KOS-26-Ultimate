@@ -525,13 +525,21 @@ window.KOSApps.uimanager = {
         return (b/1024).toFixed(1)+' KB';
       } catch{ return 'N/A'; }
     })();
+    /* Read version info from kos-version.js — single source of truth */
+    const _V = (typeof KOS_VERSION !== 'undefined') ? KOS_VERSION : null;
+    const _ver  = _V ? _V.displayVer  : 'Alpha 9 · 9.0.2026';
+    const _prod = _V ? _V.displayProduct : 'KOS Ultimate 2026 Edition';
+    const _dev  = _V ? _V.developer   : 'Kalapurackal Studios';
+
     const info = [
-      ['Version',      'KOS Ultimate 2026 · Build 2.0'],
-      ['Viewport',     `${innerWidth} × ${innerHeight} px`],
+      ['Version',       _ver],
+      ['Build Type',    _V ? _V.buildLabel  : '—'],
+      ['Released',      _V ? _V.releaseDate : '—'],
+      ['Viewport',      `${innerWidth} × ${innerHeight} px`],
       ['Colour Scheme', document.body.classList.contains('dark') ? 'Dark' : 'Light'],
-      ['Glass UI',     !document.body.classList.contains('no-glass') ? 'Enabled' : 'Disabled'],
+      ['Glass UI',      !document.body.classList.contains('no-glass') ? 'Enabled' : 'Disabled'],
       ['Local Storage', lsKB],
-      ['Platform',     navigator.platform || 'Unknown'],
+      ['Platform',      navigator.platform || 'Unknown'],
     ];
     return `
       <div class="st-sec-head">
@@ -544,8 +552,8 @@ window.KOSApps.uimanager = {
 
       <div class="st-about-hero">
         <div class="st-about-mark">KOS</div>
-        <div class="st-about-product">KOS Ultimate</div>
-        <div class="st-about-ver">Version 2026 · Build 2.0</div>
+        <div class="st-about-product">${_prod}</div>
+        <div class="st-about-ver">${_ver}</div>
       </div>
 
       <div class="st-card">
@@ -563,7 +571,7 @@ window.KOSApps.uimanager = {
           <div class="st-tip-ico" style="background:rgba(255,59,48,.15);color:#ff3b30">
             <i class="fa-solid fa-heart"></i>
           </div>
-          <span>KOS Ultimate 2026 — Designed &amp; crafted by Kalapurackal Studios</span>
+          <span>${_prod} — Designed &amp; crafted by ${_dev}</span>
         </div>
         <div class="st-div" style="margin:0 16px"></div>
         <div class="st-tip-row">

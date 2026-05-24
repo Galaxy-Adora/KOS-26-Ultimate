@@ -20,54 +20,6 @@ const RELEASES = [
 
   /* ── Latest release — always first ── */
   {
-    version:  'Alpha 8',
-    date:     'May 23, 2026',
-    tag:      'System Foundation Update',
-    tagColor: 'blue',
-    sections: [
-      {
-        title: '🚀 New Features',
-        items: [
-          'KOSFS unified filesystem kernel — all user files (images, audio, video, documents) now live in a single kos-filesystem IndexedDB store instead of four separate per-type databases',
-          'KOSFS automatic migration — existing data from kos-photos, kos-videos, kos-audios, and kos-documents is silently migrated to the unified store on first boot after upgrade',
-          'KOSFS File Picker — shared modal file picker (kos-fs-picker.js) used by all apps for opening, browsing, and uploading files, replacing each app\'s own ad-hoc input logic',
-          'Terminal app — full system CLI with commands: help, clear, sysinfo, tree (renders full filesystem tree from KOSFS), theme, and glass; supports arrow-key command history navigation',
-          'Music app — dedicated audio player backed by KOSFS audio storage',
-          'Videos app — dedicated video player backed by KOSFS video storage',
-          'Display Manager (kos-display.js) — Screen Zoom (50–250%), Text Size (6 levels), Bold Text toggle, and Brightness slider; persistent across sessions via localStorage',
-          'System File Manifest (sys-manifest.js) — declares every project source file with path, size, category, and description; powers the terminal tree command without server access',
-          'Topbar redesign — macOS-style menu bar replacing the old minimal layout; new KOS logo menu, File menu, Window menu, and an expanded System menu, all fully wired to real app and WM actions',
-          'Topbar status bar — right-side Wi-Fi indicator, Volume dropdown with live slider, Battery indicator using the Battery Status API (hides gracefully when unavailable), and a Notification Center bell',
-          'Notification Center — slide-in panel triggered from the topbar bell; shows current date and notification area',
-          'KOSFS permission model — each app declares its allowed file types in the app manifest; KOSFS enforces access so apps can only read and write their permitted types',
-        ],
-      },
-      {
-        title: '✨ Improvements',
-        items: [
-          'Settings → Display section now delegates entirely to KOSDisplay module for zoom, text size, bold text, and brightness — settings are applied live without a reload',
-          'Settings → About section now shows live KOSFS storage usage via KOSFS._systemStats()',
-          'Notes app fully migrated to KOSFS — create, save, rename, delete, and upload all go through the unified filesystem; cross-app sync with Files app now works via KOSBus fs events',
-          'Window menu in topbar lets you Minimize or Zoom the currently focused window, Minimize All, or Close All directly from the menu bar without touching the window controls',
-          'File menu in topbar provides quick access to New Note, Open Files, and New App in Studio with one click',
-          'Apps menu in topbar shows a curated shortcut list — Terminal, Task Manager, Settings, Files, Notes, Browser — plus the Spotlight search button at the top',
-          'Volume control in topbar slider actually sets .volume on all active audio and video elements on the page',
-          'Battery icon updates live — reflects real charge level and shows a charging indicator when plugged in via the Battery Status API',
-        ],
-      },
-      {
-        title: '🐛 Bug Fixes',
-        items: [
-          'Release Notes app window opened but the content area was completely blank — the init() function was querying for .rn-body and #rn-body which never exist; fixed to use the correct #releasenotes-body element that the Window Manager actually creates',
-          'Apps using WM.setOnOpen() could silently fail if their init() queried a container element by a hardcoded id that did not match what the WM built from the app manifest',
-          'KOSFS KOSBus compatibility — kos-fs.js called KOSBus.emit() but kos-kernel.js only defined KOSBus.dispatch(); resolved by aliasing emit to dispatch so all filesystem events fire correctly',
-        ],
-      },
-    ],
-  },
-
-  /* ── Previous releases ── */
-  {
     version:  'Alpha 7',
     date:     'May 21, 2026',
     tag:      'Performance Update',
@@ -253,7 +205,8 @@ const RELEASES = [
 
 window.KOSApps.releasenotes = {
   init() {
-    const body = document.getElementById('releasenotes-body');
+    /* bodyId in kos-manifest.js is 'relnotes-body' — that is what the WM builds. */
+    const body = document.getElementById('relnotes-body');
     if (!body) return;
 
     const [latest, ...older] = RELEASES;

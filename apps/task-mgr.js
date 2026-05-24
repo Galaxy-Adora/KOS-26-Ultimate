@@ -35,7 +35,8 @@ let _tmList = null;
 
 window.KOSApps.taskmanager = {
   init() {
-    const body = document.getElementById('tm-body');
+    /* bodyId in kos-manifest.js is 'task-body' — that is what the WM builds. */
+    const body = document.getElementById('task-body');
     if (!body) return;
     body.innerHTML = `
       <div class="tm-mem-section">
