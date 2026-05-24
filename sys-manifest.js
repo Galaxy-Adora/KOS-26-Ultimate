@@ -132,6 +132,12 @@ const KOS_SYS_MANIFEST = Object.freeze({
       desc : 'PWA web app manifest — name, icons, theme colour, display mode',
     },
     {
+      path : 'kos-manifest.json',
+      size : 300,
+      cat  : 'config',
+      desc : 'for editing ver details accros the os',
+    },
+    {
       path : 'README.md',
       size : 8591,
       cat  : 'doc',
@@ -161,7 +167,7 @@ const KOS_SYS_MANIFEST = Object.freeze({
       path : 'apps/calculator.js',
       size : 4348,
       cat  : 'app',
-      desc : 'Calculator — arithmetic, keyboard support, history',
+      desc : 'Calculator — arithmetic, keyboard support, history built by joel jais',
     },
     {
       path : 'apps/files.js',
@@ -205,7 +211,24 @@ const KOS_SYS_MANIFEST = Object.freeze({
       cat  : 'app',
       desc : 'Settings — theme, wallpaper, avatar, display, apps, storage, password',
     },
-
+    {
+      path : 'apps/music.js',
+      size : 28801,
+      cat  : 'app',
+      desc : 'spotify like system audio player app',
+    },
+    {
+      path : 'apps/video.js',
+      size : 9694,
+      cat  : 'app',
+      desc : 'video player app that is built into os',
+    },
+    {
+      path : 'apps/runner.js',
+      size : 30478,
+      cat  : 'app',
+      desc : 'retro snake game built by joel jais',
+    },
     /* ── Core stylesheets  /css/ ─────────────────────────── */
     {
       path : 'css/core-vars.css',
@@ -298,6 +321,24 @@ const KOS_SYS_MANIFEST = Object.freeze({
       size : 31325,
       cat  : 'css-app',
       desc : 'Settings app styles — sidebar, cards, toggles, wallpaper grid',
+    },
+    {
+      path : 'apps/music.css',
+      size : 2801,
+      cat  : 'app',
+      desc : 'spotify like system audio player app',
+    },
+    {
+      path : 'apps/video.css',
+      size : 2694,
+      cat  : 'app',
+      desc : 'video player app that is built into os',
+    },
+    {
+      path : 'apps/runner.css',
+      size : 30478,
+      cat  : 'app',
+      desc : 'retro snake game built by joel jais',
     },
 
     /* ── Static assets  /documents/ ──────────────────────── */

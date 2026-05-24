@@ -12,9 +12,7 @@
       navigator.serviceWorker.register('sw.js');
   </script>
 
-  <!-- ── Google Fonts — non-render-blocking (media=print swap trick) ──
-       Load fonts with media="print" so they never block first paint.
-       onload switches media to "all" once the sheet is ready.       -->
+  <!-- ── Google Fonts — non-render-blocking (media=print swap trick) ── -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style"
@@ -34,33 +32,24 @@
 
   <!-- ══════════════════════════════════════════════════════════
        CORE STYLES  (always loaded)
-       To change variables / shell / dock / windows → edit only
-       the relevant file below.
   ══════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="css/core-vars.css">   <!-- variables, reset, icon gradients, keyframes -->
-  <link rel="stylesheet" href="css/shell.css">        <!-- boot, login, desktop, topbar -->
-  <!-- dock styles merged into css/shell.css -->
-  <link rel="stylesheet" href="css/wm.css">           <!-- floating windows + resize handles -->
+  <link rel="stylesheet" href="css/core-vars.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/wm.css">
 
   <!-- ══ MOBILE BLOCKER STYLES ══ -->
   <style>
-    /* Sits above everything; reuses boot-wordmark, boot-gif-wrap, boot-dots
-       classes already defined in shell.css so it looks identical to
-       the restart / boot screens. Only the extra notice text is new. */
-
     #screen-mobile-block {
       display: none;
       position: fixed;
       inset: 0;
       z-index: 99999;
-      background: #000;           /* same as your .screen bg */
+      background: #000;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       overflow: hidden;
     }
-
-    /* Animated dot row — mirrors shell.css boot-dots behaviour */
     #screen-mobile-block .boot-dots {
       display: flex;
       gap: 10px;
@@ -75,21 +64,16 @@
     }
     #screen-mobile-block .boot-dots span:nth-child(2) { animation-delay: 0.22s; }
     #screen-mobile-block .boot-dots span:nth-child(3) { animation-delay: 0.44s; }
-
     @keyframes mob-blink {
       0%, 80%, 100% { opacity: 0.2;  transform: scale(0.8); }
       40%            { opacity: 1;    transform: scale(1);   }
     }
-
-    /* Separator line between the gif/dots block and the notice */
     .mob-sep {
       width: 40px;
       height: 1px;
       background: rgba(255,255,255,0.12);
       margin-top: 40px;
     }
-
-    /* Notice text block */
     .mob-notice {
       margin-top: 20px;
       display: flex;
@@ -98,7 +82,6 @@
       gap: 9px;
       text-align: center;
     }
-
     .mob-notice-title {
       font-family: 'Rajdhani', monospace;
       font-size: 14px;
@@ -107,7 +90,6 @@
       text-transform: uppercase;
       color: rgba(255,255,255,0.7);
     }
-
     .mob-notice-sub {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
@@ -116,28 +98,18 @@
       color: rgba(255,255,255,0.28);
       line-height: 1.8;
     }
-
     @media (max-width: 767px) {
       #screen-mobile-block { display: flex; }
     }
   </style>
 
-  <!-- ══════════════════════════════════════════════════════════
-       APP STYLES  (injected lazily by kos-wm.js on first open,
-       but pre-listed here for apps that restore from session)
-       Each file is scoped to its app's window only.
-  ══════════════════════════════════════════════════════════════ -->
   <!-- Individual app stylesheets are injected by kos-wm.js when an app
        is first launched. You do NOT need to add <link> tags here for
        new apps — just set cssPath in kos-manifest.js. -->
-
 </head>
 <body>
 
-  <!-- ══ MOBILE BLOCKER ══
-       Intentionally mirrors the restart / boot screen layout:
-       wordmark → gif → dots → notice text.
-  ══ -->
+  <!-- ══ MOBILE BLOCKER ══ -->
   <div id="screen-mobile-block" role="alert" aria-live="polite">
     <div class="boot-wordmark">KOS</div>
     <div class="boot-gif-wrap">
@@ -208,35 +180,26 @@
 
     <div class="wallpaper" id="wallpaperEl"></div>
 
-    <!-- Topbar -->
+    <!-- ══ TOPBAR ══ -->
     <div class="topbar glass">
       <div class="left">
 
-        <!-- ── KOS Logo Menu (Apple-menu equivalent) ── -->
-        <div class="menu menu-kos-logo" onclick="toggleMenu(this, event)" title="KOS Menu">
-          <i class="fa-solid fa-dharmachakra"></i>
+        
+        <span class="system-name">KOS Ultimate 2026</span>
+         <!-- ── System ── -->
+        <div class="menu" onclick="toggleMenu(this, event)">
+          System
           <div class="dropdown-menu">
-            <div class="tb-menu-header">KOS Ultimate 2026</div>
-            <div class="tb-sep"></div>
+            <div onclick="openApp('uimanager')"><i class="fa-solid fa-sliders"></i> Preferences</div>
             <div onclick="openApp('about')"><i class="fa-solid fa-circle-info"></i> About KOS</div>
-            <div onclick="openApp('uimanager')"><i class="fa-solid fa-sliders"></i> System Preferences…</div>
-            <div class="tb-sep"></div>
-            <div onclick="openSpotlight()"><i class="fa-solid fa-magnifying-glass"></i> Spotlight Search</div>
-            <div onclick="openApp('taskmanager')"><i class="fa-solid fa-chart-bar"></i> Task Manager</div>
-            <div onclick="openApp('studio')"><i class="fa-solid fa-code"></i> KOS Studio</div>
-            <div class="tb-sep"></div>
-            <div onclick="minimizeAllWindows()"><i class="fa-solid fa-window-minimize"></i> Hide All Windows</div>
-            <div onclick="closeAllWindows()"><i class="fa-solid fa-xmark"></i> Close All Windows</div>
+            <div onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Toggle Theme</div>
+            <div onclick="toggleGlass()"><i class="fa-solid fa-droplet"></i> Toggle Glass</div>
             <div class="tb-sep"></div>
             <div onclick="triggerSleep()"><i class="fa-solid fa-moon"></i> Sleep</div>
-            <div onclick="triggerRestart()"><i class="fa-solid fa-rotate-right"></i> Restart…</div>
-            <div onclick="triggerShutdown()"><i class="fa-solid fa-power-off"></i> Shut Down…</div>
+            <div onclick="triggerRestart()"><i class="fa-solid fa-rotate-right"></i> Restart</div>
+            <div onclick="triggerShutdown()"><i class="fa-solid fa-power-off"></i> Shut Down</div>
           </div>
         </div>
-
-        <!-- System name — updates to focused app name when maximised (WM handles this) -->
-        <span class="system-name">KOS Ultimate 2026</span>
-
         <!-- ── File ── -->
         <div class="menu" onclick="toggleMenu(this, event)">
           File
@@ -259,7 +222,6 @@
             <div onclick="openApp('taskmanager')"><i class="fa-solid fa-chart-bar"></i> Task Manager</div>
             <div onclick="openApp('uimanager')"><i class="fa-solid fa-sliders"></i> Settings</div>
             <div onclick="openApp('files')"><i class="fa-solid fa-folder"></i> Files</div>
-            <div onclick="openApp('notes')"><i class="fa-solid fa-note-sticky"></i> Notes</div>
             <div onclick="openApp('browser')"><i class="fa-solid fa-globe"></i> Browser</div>
           </div>
         </div>
@@ -276,63 +238,25 @@
           </div>
         </div>
 
-        <!-- ── System ── -->
-        <div class="menu" onclick="toggleMenu(this, event)">
-          System
-          <div class="dropdown-menu">
-            <div onclick="openApp('uimanager')"><i class="fa-solid fa-sliders"></i> Preferences</div>
-            <div onclick="openApp('about')"><i class="fa-solid fa-circle-info"></i> About KOS</div>
-            <div onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Toggle Theme</div>
-            <div onclick="toggleGlass()"><i class="fa-solid fa-droplet"></i> Toggle Glass</div>
-            <div class="tb-sep"></div>
-            <div onclick="triggerSleep()"><i class="fa-solid fa-moon"></i> Sleep</div>
-            <div onclick="triggerRestart()"><i class="fa-solid fa-rotate-right"></i> Restart</div>
-            <div onclick="triggerShutdown()"><i class="fa-solid fa-power-off"></i> Shut Down</div>
-          </div>
-        </div>
+        
 
       </div><!-- end .left -->
 
-      <!-- ── Right: status indicators ── -->
+      <!-- ── Right: system tray ── -->
       <div class="right">
 
-        <!-- Wi-Fi (decorative) -->
-        <div class="tb-status-icon" title="Wi-Fi: Connected">
+        <!-- System-tray cluster → opens Quick Settings -->
+        <button class="tb-qs-cluster" id="qs-btn" onclick="toggleQuickSettings()" title="Quick Settings">
           <i class="fa-solid fa-wifi"></i>
-        </div>
-
-        <!-- Volume -->
-        <div class="menu tb-status-icon tb-volume-menu" onclick="toggleMenu(this, event)" title="Volume">
-          <i class="fa-solid fa-volume-high" id="volumeIcon"></i>
-          <div class="dropdown-menu tb-dropdown-right tb-volume-panel" onclick="event.stopPropagation()">
-            <div class="tb-volume-header"><i class="fa-solid fa-volume-high"></i> Volume</div>
-            <div class="tb-volume-row">
-              <i class="fa-solid fa-volume-off tb-vol-lo"></i>
-              <input type="range" id="topbarVolumeSlider" min="0" max="100" value="75"
-                     oninput="setSystemVolume(this.value)" onclick="event.stopPropagation()">
-              <i class="fa-solid fa-volume-high tb-vol-hi"></i>
-            </div>
-            <div class="tb-volume-pct" id="volumePct">75%</div>
-          </div>
-        </div>
-
-        <!-- Battery -->
-        <div class="tb-status-icon" id="topbarBattery" title="Battery">
-          <i class="fa-solid fa-battery-full" id="batteryIcon"></i>
-          <span class="tb-battery-pct" id="batteryPct"></span>
-        </div>
-
-        <!-- Notification Center -->
-        <div class="tb-status-icon" id="notif-bell" onclick="toggleNotificationCenter()" title="Notification Center">
-          <i class="fa-solid fa-bell"></i>
-        </div>
+          <i class="fa-solid fa-volume-high" id="qs-vol-icon-tb"></i>
+        </button>
 
         <!-- Clock -->
         <span id="clock"></span>
 
-        <!-- Theme toggle -->
-        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
-          <i id="themeIcon" class="fa-solid fa-moon"></i>
+        <!-- Notification bell → opens Notification Panel -->
+        <button class="tb-notif-btn" id="notif-btn" onclick="toggleNotifPanel()" title="Notifications">
+          <i class="fa-solid fa-bell"></i>
         </button>
 
       </div><!-- end .right -->
@@ -374,257 +298,111 @@
 
   </div><!-- end screen-desktop -->
 
-  <!-- ══ NOTIFICATION CENTER ══ -->
-  <div id="kos-notif-overlay" onclick="toggleNotificationCenter()"></div>
-  <div id="kos-notif-center">
-    <div class="knc-toprow">
-      <span class="knc-title">Notification Center</span>
-      <button class="knc-close-btn" onclick="toggleNotificationCenter()"><i class="fa-solid fa-xmark"></i></button>
+  <!-- ══ PANELS DISMISS BACKDROP ══ -->
+  <div id="kos-panels-backdrop" onclick="closeAllPanels()"></div>
+
+  <!-- ══ BRIGHTNESS OVERLAY (fallback when KOSDisplay unavailable) ══ -->
+  <div id="kos-brightness-overlay"></div>
+
+  <!-- ══ QUICK SETTINGS PANEL ══ -->
+  <div id="kos-qs-panel" class="kos-panel">
+
+    <!-- 6 toggle tiles: 2 active + 4 future placeholders -->
+    <div class="qs-tiles">
+      <button class="qs-tile" id="qs-tile-theme" onclick="qsToggleTheme()">
+        <span class="qs-tile-icon"><i class="fa-solid fa-circle-half-stroke"></i></span>
+        <span class="qs-tile-label">Dark Mode</span>
+      </button>
+      <button class="qs-tile" id="qs-tile-glass" onclick="qsToggleGlass()">
+        <span class="qs-tile-icon"><i class="fa-solid fa-droplet"></i></span>
+        <span class="qs-tile-label">Glass UI</span>
+      </button>
+      <button class="qs-tile" disabled>
+        <span class="qs-tile-icon"><i class="fa-solid fa-plus"></i></span>
+        <span class="qs-tile-label">Coming Soon</span>
+      </button>
+      <button class="qs-tile" disabled>
+        <span class="qs-tile-icon"><i class="fa-solid fa-plus"></i></span>
+        <span class="qs-tile-label">Coming Soon</span>
+      </button>
+      <button class="qs-tile" disabled>
+        <span class="qs-tile-icon"><i class="fa-solid fa-plus"></i></span>
+        <span class="qs-tile-label">Coming Soon</span>
+      </button>
+      <button class="qs-tile" disabled>
+        <span class="qs-tile-icon"><i class="fa-solid fa-plus"></i></span>
+        <span class="qs-tile-label">Coming Soon</span>
+      </button>
     </div>
-    <div class="knc-date-block">
-      <div class="knc-weekday" id="knc-weekday"></div>
-      <div class="knc-datestr" id="knc-datestr"></div>
+
+    <div class="panel-sep"></div>
+
+    <!-- Master volume row -->
+    <div class="qs-slider-row">
+      <button class="qs-slider-icon-btn" onclick="qsToggleMute()" title="Mute / Unmute">
+        <i class="fa-solid fa-volume-high" id="qs-vol-icon"></i>
+      </button>
+      <input type="range" class="qs-slider" id="qs-vol-slider"
+             min="0" max="100" value="75" style="--qs-fill:75%"
+             oninput="qsSetVolume(this.value)">
+      <span class="qs-slider-val" id="qs-vol-val">75</span>
+      <!-- Expand to per-app mixer -->
+      <button class="qs-mixer-expand-btn" id="qs-mixer-btn"
+              onclick="qsToggleMixer()" title="App Volume Mixer">
+        <i class="fa-solid fa-chevron-down"></i>
+      </button>
     </div>
-    <div class="knc-section-label">Notifications</div>
-    <div class="knc-empty-state" id="knc-empty">
+
+    <!-- Per-app volume mixer (hidden until expand btn clicked) -->
+    <div class="qs-mixer-panel" id="qs-mixer-panel">
+      <div class="qs-mixer-title">App Volume Mixer</div>
+      <div id="qs-mixer-apps">
+        <div class="qs-mixer-empty">No apps with audio are open</div>
+      </div>
+    </div>
+
+    <div class="panel-sep"></div>
+
+    <!-- Brightness row -->
+    <div class="qs-slider-row">
+      <button class="qs-slider-icon-btn" title="Brightness" style="cursor:default">
+        <i class="fa-solid fa-sun"></i>
+      </button>
+      <input type="range" class="qs-slider" id="qs-bright-slider"
+             min="10" max="100" value="100" style="--qs-fill:100%"
+             oninput="qsSetBrightness(this.value)">
+      <span class="qs-slider-val" id="qs-bright-val">100</span>
+    </div>
+
+  </div><!-- end #kos-qs-panel -->
+
+  <!-- ══ NOTIFICATION PANEL ══ -->
+  <div id="kos-notif-panel" class="kos-panel">
+    <div class="kn-date-row">
+      <div class="kn-weekday" id="kn-weekday"></div>
+      <div class="kn-datestr"  id="kn-datestr"></div>
+    </div>
+    <div class="panel-sep"></div>
+    <div class="kn-section-title">Notifications</div>
+    <div class="kn-empty">
       <i class="fa-solid fa-bell-slash"></i>
       <p>No new notifications</p>
     </div>
   </div>
 
-  <!-- ══ TOPBAR EXTENDED STYLES ══ -->
-  <style>
-    /* ── KOS logo button ── */
-    .menu-kos-logo {
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
-      font-size: 16px;
-      color: var(--text, #fff);
-      opacity: 0.85;
-      transition: opacity 0.15s;
-      cursor: pointer;
-    }
-    .menu-kos-logo:hover { opacity: 1; }
+  <!-- Hidden file inputs -->
+  <input type="file" id="wallpaperFileInput" accept="image/*" style="display:none"
+         onchange="handleWallpaperUpload(event)">
+  <input type="file" id="avatarFileInput"    accept="image/*" style="display:none"
+         onchange="handleAvatarUpload(event)">
 
-    /* ── Dropdown enhancements ── */
-    .tb-sep {
-      height: 1px;
-      background: rgba(255,255,255,0.1);
-      margin: 4px 8px;
-      pointer-events: none;
-    }
-    .tb-menu-header {
-      padding: 6px 12px 4px;
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      opacity: 0.4;
-      pointer-events: none;
-      font-weight: 600;
-    }
-    .tb-section-label {
-      padding: 4px 12px 2px;
-      font-size: 10px;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      opacity: 0.35;
-      pointer-events: none;
-      font-weight: 600;
-    }
-    /* Icons inside dropdown items */
-    .dropdown-menu div i {
-      width: 16px;
-      margin-right: 7px;
-      opacity: 0.65;
-      font-size: 11px;
-    }
-
-    /* ── Right-side status icons ── */
-    .tb-status-icon {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 0 6px;
-      height: 100%;
-      font-size: 13px;
-      opacity: 0.75;
-      cursor: pointer;
-      transition: opacity 0.15s;
-      position: relative;
-      border-radius: 6px;
-    }
-    .tb-status-icon:hover { opacity: 1; background: rgba(255,255,255,0.08); }
-    .tb-status-icon.active { opacity: 1; background: rgba(255,255,255,0.12); }
-
-    /* Battery pct label */
-    .tb-battery-pct {
-      font-size: 10px;
-      opacity: 0.7;
-      line-height: 1;
-    }
-
-    /* ── Volume dropdown ── */
-    .tb-dropdown-right {
-      right: 0 !important;
-      left: auto !important;
-      min-width: 220px;
-    }
-    .tb-volume-menu { position: relative; }
-    .tb-volume-panel { padding: 12px 14px 14px; }
-    .tb-volume-header {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      margin-bottom: 12px;
-      opacity: 0.6;
-      pointer-events: none;
-    }
-    .tb-volume-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .tb-vol-lo, .tb-vol-hi { opacity: 0.5; font-size: 11px; }
-    .tb-volume-row input[type=range] {
-      flex: 1;
-      -webkit-appearance: none;
-      height: 4px;
-      border-radius: 2px;
-      background: rgba(255,255,255,0.2);
-      outline: none;
-      cursor: pointer;
-    }
-    .tb-volume-row input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #fff;
-      cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
-    }
-    .tb-volume-pct {
-      text-align: center;
-      font-size: 11px;
-      margin-top: 8px;
-      opacity: 0.45;
-      pointer-events: none;
-    }
-
-    /* ── Notification center overlay ── */
-    #kos-notif-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 8998;
-      background: rgba(0,0,0,0.25);
-      backdrop-filter: blur(2px);
-      opacity: 0;
-      transition: opacity 0.25s;
-    }
-    #kos-notif-overlay.knc-open { display: block; opacity: 1; }
-
-    /* ── Notification center panel ── */
-    #kos-notif-center {
-      position: fixed;
-      top: 0;
-      right: -340px;
-      width: 320px;
-      height: 100vh;
-      z-index: 8999;
-      background: rgba(18, 18, 28, 0.82);
-      backdrop-filter: blur(28px) saturate(1.4);
-      -webkit-backdrop-filter: blur(28px) saturate(1.4);
-      border-left: 1px solid rgba(255,255,255,0.07);
-      display: flex;
-      flex-direction: column;
-      padding: 0;
-      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: -8px 0 40px rgba(0,0,0,0.35);
-    }
-    #kos-notif-center.knc-open { right: 0; }
-
-    .knc-toprow {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 18px 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      margin-top: 44px; /* below topbar */
-    }
-    .knc-title {
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: rgba(255,255,255,0.85);
-    }
-    .knc-close-btn {
-      background: rgba(255,255,255,0.08);
-      border: none;
-      color: rgba(255,255,255,0.5);
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      transition: background 0.15s, color 0.15s;
-    }
-    .knc-close-btn:hover { background: rgba(255,255,255,0.16); color: #fff; }
-
-    .knc-date-block {
-      padding: 24px 18px 18px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .knc-weekday {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: rgba(255,255,255,0.35);
-      margin-bottom: 4px;
-    }
-    .knc-datestr {
-      font-size: 28px;
-      font-weight: 300;
-      color: rgba(255,255,255,0.85);
-      line-height: 1.15;
-    }
-
-    .knc-section-label {
-      padding: 14px 18px 6px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgba(255,255,255,0.3);
-      font-weight: 600;
-    }
-
-    .knc-empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      color: rgba(255,255,255,0.2);
-      padding-bottom: 80px;
-    }
-    .knc-empty-state i { font-size: 32px; }
-    .knc-empty-state p { font-size: 13px; margin: 0; }
-  </style>
-
-  <!-- ══ TOPBAR HELPER FUNCTIONS ══ -->
+  <!-- ══ SYSTEM PANEL FUNCTIONS ══ -->
   <script>
-    /* Close all open windows */
+    /* ── Window helpers ── */
     function closeAllWindows() {
       if (!window.WM) return;
       Object.keys(WM.registry).forEach(id => WM.close(id));
     }
-
-    /* Minimize all open, non-minimized windows */
     function minimizeAllWindows() {
       if (!window.WM) return;
       Object.keys(WM.registry).forEach(id => {
@@ -633,108 +411,294 @@
       });
     }
 
-    /* System volume — controls all media elements on the page */
-    function setSystemVolume(val) {
-      const v = parseInt(val, 10) / 100;
-      document.querySelectorAll('audio, video').forEach(el => { el.volume = v; });
-      const icon = document.getElementById('volumeIcon');
-      if (icon) {
-        icon.className = v === 0   ? 'fa-solid fa-volume-xmark' :
-                         v < 0.5   ? 'fa-solid fa-volume-low'   :
-                                     'fa-solid fa-volume-high';
-      }
-      const pct = document.getElementById('volumePct');
-      if (pct) pct.textContent = Math.round(v * 100) + '%';
+    /* ── Panel state ── */
+    let _qsOpen    = false;
+    let _notifOpen = false;
+    let _mixerOpen = false;
+
+    /* Top offset constants — must match CSS:
+       Topbar height = 44px + 6px gap = 50px panel top
+       Panel gap between stacked panels = 8px                  */
+    const _PANEL_TOP  = 50;
+    const _PANEL_GAP  = 8;
+
+    function _backdrop(show) {
+      document.getElementById('kos-panels-backdrop')
+              .classList.toggle('backdrop-open', show);
     }
 
-    /* Notification center toggle */
-    function toggleNotificationCenter() {
-      const nc  = document.getElementById('kos-notif-center');
-      const ov  = document.getElementById('kos-notif-overlay');
-      const bell = document.getElementById('notif-bell');
-      if (!nc) return;
-      const opening = !nc.classList.contains('knc-open');
-      nc.classList.toggle('knc-open', opening);
-      ov.classList.toggle('knc-open', opening);
-      bell?.classList.toggle('active', opening);
-      if (opening) {
-        /* Refresh date display */
-        const now = new Date();
-        const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const months = ['January','February','March','April','May','June',
+    function closeAllPanels() {
+      const qsEl    = document.getElementById('kos-qs-panel');
+      const notifEl = document.getElementById('kos-notif-panel');
+      qsEl?.classList.remove('panel-open');
+      notifEl?.classList.remove('panel-open');
+      document.getElementById('qs-btn')?.classList.remove('active');
+      document.getElementById('notif-btn')?.classList.remove('active');
+      _qsOpen = _notifOpen = false;
+      // don't close mixer state — keep it for next open
+      _backdrop(false);
+    }
+
+    /* ── Quick Settings ── */
+    function toggleQuickSettings() {
+      const qsEl = document.getElementById('kos-qs-panel');
+      if (!qsEl) return;
+
+      if (_qsOpen) {
+        qsEl.classList.remove('panel-open');
+        document.getElementById('qs-btn').classList.remove('active');
+        _qsOpen = false;
+        // If notif is open, slide it back to base position
+        if (_notifOpen) _positionNotif(false);
+        if (!_notifOpen) _backdrop(false);
+      } else {
+        qsTileSyncState();
+        qsEl.classList.add('panel-open');
+        document.getElementById('qs-btn').classList.add('active');
+        _qsOpen = true;
+        // If notif is already open, push it down
+        if (_notifOpen) _positionNotif(true);
+        _backdrop(true);
+      }
+    }
+
+    /* ── Notification Panel ── */
+    function toggleNotifPanel() {
+      const notifEl = document.getElementById('kos-notif-panel');
+      if (!notifEl) return;
+
+      if (_notifOpen) {
+        notifEl.classList.remove('panel-open');
+        document.getElementById('notif-btn').classList.remove('active');
+        _notifOpen = false;
+        if (!_qsOpen) _backdrop(false);
+      } else {
+        // Refresh live date
+        const now    = new Date();
+        const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const MONTHS = ['January','February','March','April','May','June',
                         'July','August','September','October','November','December'];
-        const wd = document.getElementById('knc-weekday');
-        const ds = document.getElementById('knc-datestr');
-        if (wd) wd.textContent = days[now.getDay()];
-        if (ds) ds.textContent = months[now.getMonth()] + ' ' + now.getDate();
+        const wd = document.getElementById('kn-weekday');
+        const ds = document.getElementById('kn-datestr');
+        if (wd) wd.textContent = DAYS[now.getDay()];
+        if (ds) ds.textContent = MONTHS[now.getMonth()] + ' ' + now.getDate();
+
+        _positionNotif(_qsOpen);
+        notifEl.classList.add('panel-open');
+        document.getElementById('notif-btn').classList.add('active');
+        _notifOpen = true;
+        _backdrop(true);
       }
     }
 
-    /* Battery API — progressive enhancement */
-    (function initBattery() {
-      if (!('getBattery' in navigator)) {
-        const el = document.getElementById('topbarBattery');
-        if (el) el.style.display = 'none';
+    /* Position notif panel: directly below QS if QS is open, else at base top */
+    function _positionNotif(belowQs) {
+      const notifEl = document.getElementById('kos-notif-panel');
+      if (!notifEl) return;
+      if (belowQs) {
+        const qsEl = document.getElementById('kos-qs-panel');
+        const qsH  = qsEl ? qsEl.getBoundingClientRect().height : 300;
+        notifEl.style.top = (_PANEL_TOP + qsH + _PANEL_GAP) + 'px';
+      } else {
+        notifEl.style.top = _PANEL_TOP + 'px';
+      }
+    }
+
+    /* ── Tile state sync ── */
+    function qsTileSyncState() {
+      const isDark  = document.body.classList.contains('dark');
+      const isGlass = !document.body.classList.contains('no-glass');
+      document.getElementById('qs-tile-theme')?.classList.toggle('qs-on', isDark);
+      document.getElementById('qs-tile-glass')?.classList.toggle('qs-on', isGlass);
+    }
+    function qsToggleTheme() {
+      if (typeof toggleTheme === 'function') toggleTheme();
+      setTimeout(qsTileSyncState, 40);
+    }
+    function qsToggleGlass() {
+      if (typeof toggleGlass === 'function') toggleGlass();
+      setTimeout(qsTileSyncState, 40);
+    }
+
+    /* ── Volume (master) ── */
+    let _muted   = false;
+    let _lastVol = 75;
+
+    function _volIconClass(v) {
+      return v === 0  ? 'fa-solid fa-volume-xmark' :
+             v < 40   ? 'fa-solid fa-volume-low'   :
+                        'fa-solid fa-volume-high';
+    }
+
+    function qsSetVolume(val) {
+      const v  = parseInt(val, 10);
+      if (v > 0) _lastVol = v;
+      _muted = v === 0;
+      const frac = v / 100;
+      document.querySelectorAll('audio, video').forEach(el => { el.volume = frac; });
+      // Update master slider fill
+      const sl = document.getElementById('qs-vol-slider');
+      if (sl) sl.style.setProperty('--qs-fill', v + '%');
+      document.getElementById('qs-vol-val').textContent  = v;
+      // Update icons
+      const cls = _volIconClass(v);
+      document.getElementById('qs-vol-icon')?.setAttribute('class', cls);
+      document.getElementById('qs-vol-icon-tb')?.setAttribute('class', cls);
+    }
+
+    function qsToggleMute() {
+      const sl = document.getElementById('qs-vol-slider');
+      if (!sl) return;
+      if (_muted) { sl.value = _lastVol; qsSetVolume(_lastVol); }
+      else        { sl.value = 0;        qsSetVolume(0);         }
+    }
+
+    /* ── Brightness ──
+       Primary: KOSDisplay.setBrightness(0–1)  (same as terminal `brightness` command)
+       Fallback: CSS overlay div               (when kos-display.js not yet loaded)   */
+    function qsSetBrightness(val) {
+      const v = parseInt(val, 10);
+      // Update slider fill CSS var
+      const sl = document.getElementById('qs-bright-slider');
+      if (sl) sl.style.setProperty('--qs-fill', v + '%');
+      document.getElementById('qs-bright-val').textContent = v;
+      // Route through KOSDisplay first (mirrors terminal `brightness` command)
+      if (window.KOSDisplay && typeof window.KOSDisplay.setBrightness === 'function') {
+        window.KOSDisplay.setBrightness(v / 100);
+      } else {
+        // Fallback: darken via overlay (0% bright = 88% black, 100% = transparent)
+        const opacity = (100 - v) / 100 * 0.88;
+        const overlay = document.getElementById('kos-brightness-overlay');
+        if (overlay) overlay.style.background = 'rgba(0,0,0,' + opacity.toFixed(3) + ')';
+      }
+    }
+
+    /* Sync brightness slider to current KOSDisplay state when QS opens */
+    function _syncBrightness() {
+      if (!window.KOSDisplay) return;
+      // KOSDisplay stores brightness in localStorage key 'kos-brightness'
+      const stored = parseFloat(localStorage.getItem('kos-brightness'));
+      if (!isNaN(stored)) {
+        const pct = Math.round(stored * 100);
+        const sl  = document.getElementById('qs-bright-slider');
+        if (sl) { sl.value = pct; sl.style.setProperty('--qs-fill', pct + '%'); }
+        const vl = document.getElementById('qs-bright-val');
+        if (vl) vl.textContent = pct;
+      }
+    }
+
+    /* ── Per-app Volume Mixer ── */
+    function qsToggleMixer() {
+      _mixerOpen = !_mixerOpen;
+      const panel = document.getElementById('qs-mixer-panel');
+      const btn   = document.getElementById('qs-mixer-btn');
+      panel?.classList.toggle('mixer-open', _mixerOpen);
+      btn?.classList.toggle('expanded', _mixerOpen);
+      if (_mixerOpen) _buildMixer();
+    }
+
+    /* App icon gradient map (mirrors core-vars.css icon classes) */
+    const _APP_COLORS = {
+      browser: '#007aff', music: '#fc3c44', videos: '#3a3a3c',
+      gallery: '#ff9f0a', files: '#2196f3', notes: '#ffcc00',
+      studio:  '#5e5ce6', taskmanager: '#30d158', uimanager: '#636366',
+      calculator: '#3a3a3c', terminal: '#1c1c1e', runner: '#ff6b35',
+    };
+
+    function _buildMixer() {
+      const container = document.getElementById('qs-mixer-apps');
+      if (!container) return;
+
+      // Collect all audio/video elements and group by owning window
+      const mediaEls = Array.from(document.querySelectorAll('audio, video'));
+      const appMap   = new Map(); // appId → { name, color, elements[] }
+
+      mediaEls.forEach(el => {
+        // Find the parent WM window element (id="win-{appId}")
+        const winEl = el.closest('[id^="win-"]');
+        const appId = winEl ? winEl.id.replace('win-', '') : '__master__';
+        // Try to get the app name from AppManifest
+        let appName = appId;
+        if (window.AppManifest) {
+          const entry = AppManifest.find(a => a.id === appId);
+          if (entry) appName = entry.name || appId;
+        }
+        if (!appMap.has(appId)) {
+          appMap.set(appId, { name: appName, color: _APP_COLORS[appId] || '#555', elements: [] });
+        }
+        appMap.get(appId).elements.push(el);
+      });
+
+      if (appMap.size === 0) {
+        container.innerHTML = '<div class="qs-mixer-empty">No apps with audio are open</div>';
         return;
       }
-      navigator.getBattery().then(function(bat) {
-        function update() {
-          const lvl  = Math.round(bat.level * 100);
-          const icon = document.getElementById('batteryIcon');
-          const pct  = document.getElementById('batteryPct');
-          const tip  = document.getElementById('topbarBattery');
-          const cls  = lvl > 87 ? 'fa-battery-full'           :
-                       lvl > 62 ? 'fa-battery-three-quarters'  :
-                       lvl > 37 ? 'fa-battery-half'            :
-                       lvl > 12 ? 'fa-battery-quarter'         : 'fa-battery-empty';
-          if (icon) icon.className = 'fa-solid ' + cls + (bat.charging ? ' tb-charging' : '');
-          if (pct)  pct.textContent = lvl + '%';
-          if (tip)  tip.title = 'Battery: ' + lvl + '%' + (bat.charging ? ' · Charging' : '');
-        }
-        update();
-        bat.addEventListener('levelchange',   update);
-        bat.addEventListener('chargingchange', update);
-      }).catch(function() {
-        const el = document.getElementById('topbarBattery');
-        if (el) el.style.display = 'none';
+
+      let html = '';
+      appMap.forEach(({ name, color, elements }, appId) => {
+        // Use the average volume of all elements for this app
+        const avgVol = Math.round(
+          elements.reduce((s, el) => s + el.volume, 0) / elements.length * 100
+        );
+        html += `
+          <div class="qs-mixer-row" data-mixer-app="${appId}">
+            <div class="qs-mixer-app-icon" style="background:${color}">
+              <i class="fa-solid fa-music"></i>
+            </div>
+            <span class="qs-mixer-app-name" title="${name}">${name}</span>
+            <input type="range" class="qs-mixer-slider"
+                   min="0" max="100" value="${avgVol}"
+                   style="--mix-fill:${avgVol}%"
+                   oninput="qsMixerSetAppVol('${appId}', this.value, this)">
+            <span class="qs-mixer-pct" id="mix-pct-${appId}">${avgVol}</span>
+          </div>`;
       });
-    })();
+      container.innerHTML = html;
+    }
+
+    /* Set volume for a specific app's media elements */
+    function qsMixerSetAppVol(appId, val, sliderEl) {
+      const v    = parseInt(val, 10);
+      const frac = v / 100;
+      const winEl = document.getElementById('win-' + appId);
+      if (winEl) {
+        winEl.querySelectorAll('audio, video').forEach(el => { el.volume = frac; });
+      }
+      // Update fill and pct label
+      sliderEl.style.setProperty('--mix-fill', v + '%');
+      const pctEl = document.getElementById('mix-pct-' + appId);
+      if (pctEl) pctEl.textContent = v;
+    }
+
+    /* Auto-refresh mixer when QS opens */
+    const _origToggleQS = window.toggleQuickSettings;
   </script>
-
-  <!-- Hidden file inputs -->
-  <input type="file" id="wallpaperFileInput" accept="image/*" style="display:none"
-         onchange="handleWallpaperUpload(event)">
-  <input type="file" id="avatarFileInput"    accept="image/*" style="display:none"
-         onchange="handleAvatarUpload(event)">
-
 
   <!-- ══════════════════════════════════════════════════════════
        SCRIPT LOADING ORDER  — do not reorder these
 
-       1. kos-manifest.js   — AppManifest array (no dependencies)
-       2. kos-kernel.js     — core utilities    (needs manifest for nothing, but defines KOSBus)
-       3. kos-wm.js         — window manager    (needs KOSBus + AppManifest)
-       4. apps/dock.js      — dock module       (needs WM + KOSBus + AppManifest)
-       5. apps/spotlight.js — spotlight         (needs WM + KOSBus + AppManifest)
-       6. app modules       — each registers itself with WM.setOnOpen()
-       7. kos-init.js       — boot orchestrator (runs after everything is ready)
+       1. kos-version.js   — KOS_VERSION constant (must be first)
+       2. kos-manifest.js  — AppManifest array
+       3. sys-manifest.js  — system file manifest (terminal systree)
+       4. kos-kernel.js    — core utilities + KOSBus
+       5. kos-fs.js        — KOSFS filesystem kernel
+       6. kos-fs-picker.js — shared file picker UI
+       7. kos-contextmenu.js
+       8. kos-wm.js        — window manager
+       9. app modules      — each registers with WM.setOnOpen()
+      10. kos-display.js   — display manager (zoom, brightness…)
+      11. kos-init.js      — boot orchestrator (must be last)
   ══════════════════════════════════════════════════════════════ -->
+  <script defer src="kos-version.js"></script>
   <script defer src="kos-manifest.js"></script>
-  <script defer src="sys-manifest.js"></script>   <!-- system file manifest — read by terminal systree -->
+  <script defer src="sys-manifest.js"></script>
   <script defer src="kos-kernel.js"></script>
-  <!-- ── KOS Filesystem kernel — must come before kos-wm.js and all app modules ── -->
   <script defer src="kos-fs.js"></script>
   <script defer src="kos-fs-picker.js"></script>
   <script defer src="kos-contextmenu.js"></script>
-
   <script defer src="kos-wm.js"></script>
 
-<!-- ── App modules ──
-       Each file calls WM.setOnOpen(id, fn) to register its init hook.
-       TO ADD A NEW APP: add one line here + one entry in kos-manifest.js.
-       Nothing else changes.
-  ── -->
-  <!-- App modules -->
+  <!-- ── App modules ── -->
   <script defer src="apps/browser.js"></script>
   <script defer src="apps/ui-manager.js"></script>
   <script defer src="apps/task-mgr.js"></script>
@@ -745,10 +709,12 @@
   <script defer src="apps/release-notes.js"></script>
   <script defer src="apps/files.js"></script>
   <script defer src="apps/notes.js"></script>
+  <script defer src="apps/videos.js"></script>
   <script defer src="apps/music.js"></script>
-  <script defer src="apps/videos.js"></script> <!-- REGISTERED VIDEOS APP HOOK HERE -->
+  <script defer src="apps/runner.js"></script>
   <script defer src="terminal.js"></script>
-<!-- Boot orchestrator — must be last -->
+
+  <!-- Boot orchestrator — must be last -->
   <script defer src="kos-display.js"></script>
   <script defer src="kos-init.js"></script>
 
