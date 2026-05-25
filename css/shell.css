@@ -1133,14 +1133,15 @@ body.dark .panel-sep { background: rgba(255,255,255,0.08); }
 
 /* ══ QUICK SETTINGS PANEL ══ */
 #kos-qs-panel {
-  top: 50px;   /* 6px gap below 44px topbar */
+  top: 62px;
+  right:25px;   /* 6px gap below 44px topbar */
 }
 
 /* Toggle tiles: 3-column grid */
 .qs-tiles {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .qs-tile {
@@ -1383,7 +1384,8 @@ body.dark .qs-mixer-slider::-webkit-slider-thumb { background: #e0e4ec; }
 
 /* ══ NOTIFICATION PANEL ══ */
 #kos-notif-panel {
-  top: 50px;   /* JS may override when QS is open */
+  top: 629px;  
+  right:25px; /* JS may override when QS is open */
   max-height: calc(100vh - 68px);
   overflow-y: auto;
 }

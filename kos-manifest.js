@@ -1,8 +1,5 @@
 'use strict';
 
-/* ─────────────────────────────────────────────────────────────
-   Responsive window sizing helper (unchanged from previous builds)
-───────────────────────────────────────────────────────────── */
 function winSize(pct, [rw, rh]) {
   const vw = window.innerWidth  * (pct / 100);
   const vh = window.innerHeight * (pct / 100);
@@ -10,20 +7,15 @@ function winSize(pct, [rw, rh]) {
   return { width: Math.round(vw), height: Math.round(h) };
 }
 
-/* ─────────────────────────────────────────────────────────────
-   AppManifest — single source of truth for all KOS applications
-───────────────────────────────────────────────────────────── */
 const AppManifest = [
 
-  /* ══════════════════════════════════════════════════════════
-     SYSTEM APPS
-  ══════════════════════════════════════════════════════════ */
+  /* ══ SYSTEM APPS ══ */
 
   {
     id        : 'uimanager',
     name      : 'Settings',
-    iconClass : 'icon-settings',
-    faIcon    : 'fa-sliders-h',
+    iconClass : 'icon-uimanager',
+    faIcon    : 'fa-sliders',
     jsPath    : 'apps/ui-manager.js',
     cssPath   : 'css/apps/ui-manager.css',
     permissions: ['*'],
@@ -39,7 +31,7 @@ const AppManifest = [
     id        : 'taskmanager',
     name      : 'Task Manager',
     iconClass : 'icon-taskmanager',
-    faIcon    : 'fa-tachometer-alt',
+    faIcon    : 'fa-chart-bar',
     jsPath    : 'apps/task-mgr.js',
     cssPath   : 'css/apps/task-mgr.css',
     permissions: [],
@@ -54,8 +46,8 @@ const AppManifest = [
   {
     id        : 'about',
     name      : 'About KOS',
-    iconClass : 'icon-about',
-    faIcon    : 'fa-info-circle',
+    iconClass : 'icon-spotlight',
+    faIcon    : 'fa-circle-info',
     jsPath    : 'apps/about.js',
     cssPath   : 'css/apps/about.css',
     permissions: [],
@@ -70,7 +62,7 @@ const AppManifest = [
   {
     id        : 'releasenotes',
     name      : 'Release Notes',
-    iconClass : 'icon-releasenotes',
+    iconClass : 'icon-spotlight',
     faIcon    : 'fa-clipboard-list',
     jsPath    : 'apps/release-notes.js',
     cssPath   : 'css/apps/release-notes.css',
@@ -83,14 +75,12 @@ const AppManifest = [
     },
   },
 
-  /* ══════════════════════════════════════════════════════════
-     USER-FACING MEDIA & FILE APPS
-  ══════════════════════════════════════════════════════════ */
+  /* ══ MEDIA & FILE APPS ══ */
 
   {
     id        : 'gallery',
     name      : 'Photos',
-    iconClass : 'icon-photos',
+    iconClass : 'icon-gallery',
     faIcon    : 'fa-images',
     jsPath    : 'apps/photos.js',
     cssPath   : 'css/apps/photos.css',
@@ -122,7 +112,7 @@ const AppManifest = [
   {
     id        : 'notes',
     name      : 'Notes',
-    iconClass : 'icon-notes',
+    iconClass : 'icon-messages',
     faIcon    : 'fa-sticky-note',
     jsPath    : 'apps/notes.js',
     cssPath   : 'css/apps/notes.css',
@@ -135,9 +125,7 @@ const AppManifest = [
     },
   },
 
-  /* ══════════════════════════════════════════════════════════
-     UTILITY APPS
-  ══════════════════════════════════════════════════════════ */
+  /* ══ UTILITY APPS ══ */
 
   {
     id        : 'calculator',
@@ -156,22 +144,23 @@ const AppManifest = [
     },
   },
 
+  /* terminal — single entry only (duplicate removed) */
   {
     id        : 'terminal',
     name      : 'Terminal',
-    iconClass : 'icon-terminal',
+    iconClass : 'icon-calculator',
     faIcon    : 'fa-terminal',
-    jsPath    : 'terminal.js', 
+    jsPath    : 'terminal.js',
     cssPath   : 'css/terminal.css',
-    permissions: ['*'], 
+    permissions: ['*'],
     metadata  : { showInDock: true, searchable: true, isSystemApp: true },
     initData  : {
       ...winSize(55, [3, 2]),
       ratio: [3, 2], size: 55,
       offset: 40,
       bodyId: 'terminal-body',
-      bodyClass: 'terminal-body-wrap'
-    }
+      bodyClass: 'terminal-body-wrap',
+    },
   },
 
   {
@@ -181,9 +170,13 @@ const AppManifest = [
     faIcon      : 'fa-compass',
     jsPath      : 'apps/browser.js',
     cssPath     : 'css/apps/browser.css',
-    permissions : ['photos', 'documents'], 
+    permissions : ['photos', 'documents'],
     metadata    : { showInDock: true, searchable: true, isSystemApp: false },
-    initData    : { width: 800, height: 600, bodyId: 'browser-body' },
+    initData    : {
+      ...winSize(72, [16, 10]),
+      ratio: [16, 10], size: 72,
+      offset: 0, bodyId: 'browser-body',
+    },
   },
 
   {
@@ -202,21 +195,19 @@ const AppManifest = [
     },
   },
 
-  /* ══════════════════════════════════════════════════════════
-     ACTIVATED & DEPLOYED APP OBJECTS
-  ══════════════════════════════════════════════════════════ */
+  /* ══ MEDIA PLAYER APPS ══ */
 
   {
     id        : 'music',
     name      : 'Music',
     iconClass : 'icon-music',
     faIcon    : 'fa-music',
-    jsPath    : 'apps/music.js',              // Linked script
-    cssPath   : 'css/apps/music.css',          // Linked styles
+    jsPath    : 'apps/music.js',
+    cssPath   : 'css/apps/music.css',
     permissions: ['audios', 'videos'],
     metadata: { showInDock: true, searchable: true, isSystemApp: false },
     initData: {
-      ...winSize(60, [16, 10]),                // Set fluid desktop footprint dimensions
+      ...winSize(60, [16, 10]),
       ratio: [16, 10], size: 60,
       offset: 30, bodyId: 'music-body',
     },
@@ -225,43 +216,36 @@ const AppManifest = [
   {
     id        : 'videos',
     name      : 'Videos',
-    iconClass : 'icon-videos',
+    iconClass : 'icon-video',
     faIcon    : 'fa-film',
-    jsPath    : 'apps/videos.js',              // Linked code module script target
-    cssPath   : 'css/apps/videos.css',          // Linked layout styling rules
+    jsPath    : 'apps/videos.js',
+    cssPath   : 'css/apps/videos.css',
     permissions: ['videos', 'audios'],
     metadata: { showInDock: true, searchable: true, isSystemApp: false },
     initData: {
-      ...winSize(64, [16, 9]),                 // Fluid canvas responsive design footprints
+      ...winSize(64, [16, 9]),
       ratio: [16, 9], size: 64,
       offset: 35, bodyId: 'videos-body',
     },
   },
-   {
+
+  {
     id        : 'runner',
     name      : 'Retro Snake Game',
-    iconClass : 'icon-videos',
-    faIcon    : 'fa-solid fa-gamepad',
-    jsPath    : 'apps/runner.js',              // Linked code module script target
-    cssPath   : 'css/apps/runner.css',          // Linked layout styling rules
-    permissions: ['videos', 'audios'],
+    iconClass : 'icon-calculator',
+    faIcon    : 'fa-gamepad',
+    jsPath    : 'apps/runner.js',
+    cssPath   : 'css/apps/runner.css',
+    permissions: [],
     metadata: { showInDock: false, searchable: true, isSystemApp: false },
     initData: {
-      ...winSize(64, [16, 9]),                 // Fluid canvas responsive design footprints
+      ...winSize(64, [16, 9]),
       ratio: [16, 9], size: 64,
       offset: 35, bodyId: 'runner-body',
     },
   },
-  {
-    id        : 'voicerecorder',
-    name      : 'Voice Recorder',
-    iconClass : 'icon-recorder',
-    faIcon    : 'fa-microphone',
-    jsPath    : null,
-    cssPath   : null,
-    permissions: ['audios'],
-    metadata: { showInDock: false, searchable: true, isSystemApp: false },
-    initData: null,
-  },
+
+  /* voicerecorder removed — jsPath and initData were both null,
+     making it permanently non-functional dead weight in Spotlight */
 
 ];

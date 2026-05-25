@@ -5,11 +5,16 @@ const ASSETS = [
   'index.html',
   'manifest.json',
   /* Core JS */
+  'kos-version.js',
   'kos-manifest.js',
+  'sys-manifest.js',
   'kos-kernel.js',
-  'kos-wm.js',
-  'kos-init.js',
+  'kos-fs.js',
+  'kos-fs-picker.js',
   'kos-contextmenu.js',
+  'kos-wm.js',
+  'kos-display.js',
+  'kos-init.js',
   /* App JS */
   'apps/browser.js',
   'apps/ui-manager.js',
@@ -21,12 +26,15 @@ const ASSETS = [
   'apps/release-notes.js',
   'apps/files.js',
   'apps/notes.js',
-  'apps/dock.js',
-  'apps/spotlight.js',
+  'apps/music.js',
+  'apps/videos.js',
+  'apps/runner.js',
+  'terminal.js',
   /* Core CSS */
   'css/core-vars.css',
   'css/shell.css',
   'css/wm.css',
+  'css/terminal.css',
   'css/kos-contextmenu.css',
   /* App CSS */
   'css/apps/browser.css',
@@ -39,6 +47,9 @@ const ASSETS = [
   'css/apps/about.css',
   'css/apps/studio.css',
   'css/apps/ui-manager.css',
+  'css/apps/music.css',
+  'css/apps/videos.css',
+  'css/apps/runner.css',
   /* Documents / media */
   'documents/img_avatar.png',
   'documents/img_avatar2.png',
@@ -51,12 +62,11 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())   /* activate immediately */
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', e => {
-  /* Delete all old caches */
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
@@ -65,17 +75,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  /* Cache-first: serve from cache, fall back to network, then cache the response */
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
-        /* Only cache successful same-origin responses */
         if (!res || res.status !== 200 || res.type === 'opaque') return res;
         const clone = res.clone();
         caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
         return res;
-      }).catch(() => cached);   /* offline: serve stale if available */
+      }).catch(() => cached);
     })
   );
 });

@@ -1,65 +1,14 @@
 /* ══════════════════════════════════════════════════════════════
    KOS ULTIMATE 2026 — kos-contextmenu.js
    Right-click context menu system.
-
-   ┌─ ARCHITECTURE ────────────────────────────────────────────┐
-   │  KOSContextMenu (public API)                               │
-   │    .register(appId, menuDef)  ← apps extend their menus   │
-   │    .registerZone(selector, menuDef) ← custom HTML zones   │
-   │    .open(x, y, menuDef)       ← programmatic open         │
-   │    .close()                                                │
-   │                                                            │
-   │  Zone resolution order (first match wins):                 │
-   │    1. Blocked zones → swallow, no menu                     │
-   │    2. App-registered menu    (data-app-id on .window)      │
-   │    3. Custom zone registry   (registerZone)                │
-   │    4. Built-in zones:                                      │
-   │         .topbar            → TOPBAR_MENU                   │
-   │         .desktop / body    → DESKTOP_MENU                  │
-   └────────────────────────────────────────────────────────────┘
-
-   UPGRADE PATH — adding a menu to an app:
-   ─────────────────────────────────────────────────────────────
-     // In your app's JS (after KOSContextMenu is loaded):
-     KOSContextMenu.register('myAppId', [
-       { label: 'New File',     icon: 'fa-file-plus',   action: () => myApp.newFile() },
-       { label: 'Save',         icon: 'fa-floppy-disk', shortcut: '⌘S', action: () => myApp.save() },
-       { type: 'sep' },
-       { label: 'Preferences',  icon: 'fa-sliders',     action: () => myApp.prefs() },
-       { type: 'sep' },
-       { label: 'Close Window', icon: 'fa-xmark',       variant: 'danger',
-         action: () => WM.close(myApp.id) },
-     ]);
-
-   MENU ITEM SHAPE:
-   ─────────────────────────────────────────────────────────────
-     { type: 'sep' }                        ← horizontal rule
-     { type: 'label', label: 'Section' }    ← non-interactive heading
-     {
-       label    : 'Item text',              // required
-       icon     : 'fa-icon-name',           // optional Font Awesome icon
-       shortcut : '⌘K',                    // optional keyboard hint (display only)
-       variant  : 'danger',                 // optional: 'danger'
-       disabled : false,                    // optional
-       checked  : false,                    // optional checkmark left of icon
-       action   : () => {},                 // called on click
-       sub      : [ ...items ],             // optional sub-menu
-     }
-
    ══════════════════════════════════════════════════════════════ */
 
 const KOSContextMenu = (() => {
 
-  /* ── Internal state ──────────────────────────────────────── */
-  let _menuEl   = null;          // the single #kos-ctx-menu DOM node
-  let _appMenus = {};            // appId → menuDef[]
-  let _zoneRegs = [];            // [{ selector, menuDef }] custom zone registrations
+  let _menuEl   = null;
+  let _appMenus = {};
+  let _zoneRegs = [];
 
-  /* ── Blocked ancestor selectors ─────────────────────────── */
-  /*
-     If the right-click target is inside ANY of these selectors,
-     the native context menu is suppressed but KOS shows nothing.
-  */
   const BLOCKED = [
     '#screen-boot',
     '#screen-login',
@@ -71,26 +20,20 @@ const KOSContextMenu = (() => {
     '#spotlight-overlay',
   ];
 
-  /* ── Zone selectors → menu builder fn ───────────────────── */
   const BUILT_IN_ZONES = [
     { selector: '.topbar',  build: _buildTopbarMenu  },
     { selector: '.desktop', build: _buildDesktopMenu },
   ];
 
-  /* ══════════════════════════════════════════════════════════
-     MENU DEFINITIONS  (built-in zones)
-     ═════════════════════════════════════════════════════════ */
-
-  /* ── Desktop / Homescreen ─────────────────────────────────
-     Right-clicking on the wallpaper / desktop icon grid.
-  ─────────────────────────────────────────────────────────── */
+  /* ── Desktop menu ── */
   function _buildDesktopMenu() {
     return [
       { type: 'label', label: 'Desktop' },
       {
         label  : 'Change Wallpaper',
         icon   : 'fa-image',
-        action : () => WM.launch('settings'),   // adjust to your settings app id
+        /* corrected: 'uimanager' is the Settings app id */
+        action : () => WM.launch('uimanager'),
       },
       {
         label  : 'New Folder',
@@ -101,9 +44,9 @@ const KOSContextMenu = (() => {
         label  : 'Sort Icons',
         icon   : 'fa-arrow-up-a-z',
         sub    : [
-          { label: 'By Name',      icon: 'fa-font',           action: () => KOSBus.dispatch('kos:sort-icons', { by: 'name' }) },
-          { label: 'By Date',      icon: 'fa-calendar',        action: () => KOSBus.dispatch('kos:sort-icons', { by: 'date' }) },
-          { label: 'By Kind',      icon: 'fa-layer-group',     action: () => KOSBus.dispatch('kos:sort-icons', { by: 'kind' }) },
+          { label: 'By Name', icon: 'fa-font',       action: () => KOSBus.dispatch('kos:sort-icons', { by: 'name' }) },
+          { label: 'By Date', icon: 'fa-calendar',    action: () => KOSBus.dispatch('kos:sort-icons', { by: 'date' }) },
+          { label: 'By Kind', icon: 'fa-layer-group', action: () => KOSBus.dispatch('kos:sort-icons', { by: 'kind' }) },
         ],
       },
       {
@@ -116,12 +59,8 @@ const KOSContextMenu = (() => {
       {
         label  : 'Display Settings',
         icon   : 'fa-display',
-        action : () => WM.launch('display-settings'),
-      },
-      {
-        label  : 'Appearance',
-        icon   : 'fa-palette',
-        action : () => WM.launch('appearance'),
+        /* corrected: navigate directly to the settings app (display section opens on click inside) */
+        action : () => WM.launch('uimanager'),
       },
       { type: 'sep' },
       {
@@ -132,9 +71,7 @@ const KOSContextMenu = (() => {
     ];
   }
 
-  /* ── Top Navigation Bar ───────────────────────────────────
-     Right-clicking the pill-shaped topbar.
-  ─────────────────────────────────────────────────────────── */
+  /* ── Topbar menu ── */
   function _buildTopbarMenu() {
     return [
       { type: 'label', label: 'System' },
@@ -144,14 +81,14 @@ const KOSContextMenu = (() => {
         shortcut: '⌘Space',
         action : () => {
           if (typeof openSpotlight === 'function') openSpotlight();
-          else KOSBus.dispatch('kos:request-spotlight-open', {});
         },
       },
       { type: 'sep' },
       {
         label  : 'System Preferences',
         icon   : 'fa-sliders',
-        action : () => WM.launch('settings'),
+        /* corrected: 'uimanager' not 'settings' */
+        action : () => WM.launch('uimanager'),
       },
       {
         label  : 'About This System',
@@ -160,31 +97,34 @@ const KOSContextMenu = (() => {
       },
       { type: 'sep' },
       {
-        label  : 'Lock Screen',
-        icon   : 'fa-lock',
+        label  : 'Sleep',
+        icon   : 'fa-moon',
         shortcut: '⌘L',
-        action : () => KOSBus.dispatch('kos:lock', {}),
+        /* corrected: call the actual kernel power function directly */
+        action : () => typeof triggerSleep === 'function' && triggerSleep(),
       },
       { type: 'sep' },
       {
         label  : 'Restart',
         icon   : 'fa-rotate-right',
-        action : () => KOSBus.dispatch('kos:restart', {}),
+        /* corrected: call the actual kernel power function directly */
+        action : () => typeof triggerRestart === 'function' && triggerRestart(),
       },
       {
         label  : 'Shut Down…',
         icon   : 'fa-power-off',
         variant: 'danger',
-        action : () => KOSBus.dispatch('kos:shutdown', {}),
+        /* corrected: call the actual kernel power function directly */
+        action : () => typeof triggerShutdown === 'function' && triggerShutdown(),
       },
     ];
   }
 
-  /* ── Default app window menu (fallback when no app registers one) */
-  function _buildDefaultAppMenu(appId, winEl) {
+  /* ── Default app window menu ── */
+  function _buildDefaultAppMenu(appId) {
     const reg = window.WM?.registry?.[appId] ?? {};
     return [
-      { type: 'label', label: reg.title ?? appId },
+      { type: 'label', label: appId },
       {
         label  : 'Minimize',
         icon   : 'fa-minus',
@@ -194,12 +134,7 @@ const KOSContextMenu = (() => {
       {
         label  : reg.maximized ? 'Restore' : 'Maximize',
         icon   : reg.maximized ? 'fa-compress' : 'fa-expand',
-        action : () => reg.maximized ? WM.restore(appId) : WM.maximize(appId),
-      },
-      {
-        label  : 'Move to Center',
-        icon   : 'fa-crosshairs',
-        action : () => WM.center(appId),
+        action : () => WM.maximize(appId),
       },
       { type: 'sep' },
       {
@@ -210,13 +145,10 @@ const KOSContextMenu = (() => {
         action : () => WM.close(appId),
       },
     ];
+    /* Removed WM.center(appId) — that method does not exist in kos-wm.js */
   }
 
-  /* ══════════════════════════════════════════════════════════
-     DOM BUILDER
-     ═════════════════════════════════════════════════════════ */
-
-  /** Ensure the persistent menu element exists in the DOM. */
+  /* ── DOM builder ── */
   function _ensureEl() {
     if (_menuEl) return;
     _menuEl = document.createElement('div');
@@ -225,12 +157,10 @@ const KOSContextMenu = (() => {
     document.body.appendChild(_menuEl);
   }
 
-  /** Render a menuDef array into a parent element (root menu or sub-menu). */
   function _renderItems(items, parent) {
     parent.innerHTML = '';
 
     items.forEach(item => {
-      /* ── Section label ─ */
       if (item.type === 'label') {
         const el = document.createElement('div');
         el.className   = 'ctx-section-label';
@@ -239,7 +169,6 @@ const KOSContextMenu = (() => {
         return;
       }
 
-      /* ── Separator ─ */
       if (item.type === 'sep') {
         const el = document.createElement('div');
         el.className = 'ctx-sep';
@@ -247,38 +176,32 @@ const KOSContextMenu = (() => {
         return;
       }
 
-      /* ── Action item ─ */
       const el = document.createElement('div');
       el.className   = 'ctx-item';
       el.setAttribute('role', 'menuitem');
       if (item.variant === 'danger') el.classList.add('ctx-danger');
       if (item.disabled)             el.classList.add('ctx-disabled');
 
-      /* Check mark */
       const check = document.createElement('span');
       check.className = 'ctx-check';
       check.innerHTML = item.checked ? '<i class="fa-solid fa-check"></i>' : '';
       el.appendChild(check);
 
-      /* Icon */
       if (item.icon) {
         const ico = document.createElement('i');
         ico.className = `fa-solid ${item.icon} ctx-icon`;
         el.appendChild(ico);
       } else {
-        /* Empty spacer so labels align when some items have icons */
         const spc = document.createElement('span');
         spc.className = 'ctx-icon';
         el.appendChild(spc);
       }
 
-      /* Label */
       const lbl = document.createElement('span');
       lbl.className   = 'ctx-label';
       lbl.textContent = item.label;
       el.appendChild(lbl);
 
-      /* Keyboard hint */
       if (item.shortcut) {
         const sh = document.createElement('span');
         sh.className   = 'ctx-shortcut';
@@ -286,7 +209,6 @@ const KOSContextMenu = (() => {
         el.appendChild(sh);
       }
 
-      /* Sub-menu arrow + panel */
       if (item.sub?.length) {
         const arrow = document.createElement('span');
         arrow.className = 'ctx-arrow';
@@ -298,14 +220,12 @@ const KOSContextMenu = (() => {
         _renderItems(item.sub, subEl);
         el.appendChild(subEl);
 
-        /* Flip sub-menu if it would overflow right edge */
         el.addEventListener('mouseenter', () => {
           const rect = subEl.getBoundingClientRect();
           subEl.classList.toggle('ctx-flip-x', rect.right > window.innerWidth - 12);
         });
       }
 
-      /* Click handler */
       if (!item.disabled && !item.sub?.length && typeof item.action === 'function') {
         el.addEventListener('click', e => {
           e.stopPropagation();
@@ -318,12 +238,8 @@ const KOSContextMenu = (() => {
     });
   }
 
-  /* ══════════════════════════════════════════════════════════
-     POSITIONING
-     ═════════════════════════════════════════════════════════ */
-
+  /* ── Positioning ── */
   function _position(x, y) {
-    /* Temporarily make visible (but transparent) to measure */
     _menuEl.style.visibility = 'hidden';
     _menuEl.style.display    = 'block';
 
@@ -332,11 +248,9 @@ const KOSContextMenu = (() => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    /* Clamp so menu never clips screen edges */
     const left = Math.min(x, vw - mw - 8);
     const top  = Math.min(y, vh - mh - 8);
 
-    /* Tell CSS where transform-origin should be for the spring */
     _menuEl.style.setProperty('--ctx-origin-x', x > vw / 2 ? 'right'  : 'left');
     _menuEl.style.setProperty('--ctx-origin-y', y > vh / 2 ? 'bottom' : 'top');
 
@@ -346,49 +260,38 @@ const KOSContextMenu = (() => {
     _menuEl.style.display    = '';
   }
 
-  /* ══════════════════════════════════════════════════════════
-     ZONE RESOLUTION
-     Returns a menuDef array (or null → show nothing).
-     ═════════════════════════════════════════════════════════ */
-
+  /* ── Zone resolution ── */
   function _resolveMenu(target) {
-    /* 1. Blocked zones → no menu */
     for (const sel of BLOCKED) {
       if (target.closest(sel)) return null;
     }
 
-    /* 2. Only show menus when the desktop screen is active */
     const desktop = document.getElementById('screen-desktop');
     if (!desktop?.classList.contains('active')) return null;
 
-    /* 3. App window → registered menu or default window menu */
     const winEl = target.closest('.window[data-app-id]');
     if (winEl) {
       const appId = winEl.dataset.appId;
       if (_appMenus[appId]) {
-        /* App provided its own menu; prepend a title label */
         const reg = window.WM?.registry?.[appId] ?? {};
         return [
           { type: 'label', label: reg.title ?? appId },
           ..._appMenus[appId],
         ];
       }
-      return _buildDefaultAppMenu(appId, winEl);
+      return _buildDefaultAppMenu(appId);
     }
 
-    /* 4. Custom zone registrations (user-registered via registerZone) */
     for (const { selector, menuDef } of _zoneRegs) {
       if (target.closest(selector)) {
         return typeof menuDef === 'function' ? menuDef(target) : menuDef;
       }
     }
 
-    /* 5. Built-in zones */
     for (const { selector, build } of BUILT_IN_ZONES) {
       if (target.closest(selector)) return build(target);
     }
 
-    /* 6. Bare desktop / wallpaper fallback */
     if (
       target.closest('.desktop') ||
       target.closest('#screen-desktop') ||
@@ -397,20 +300,15 @@ const KOSContextMenu = (() => {
       return _buildDesktopMenu();
     }
 
-    /* Nothing matched → suppress native menu but show nothing */
     return null;
   }
 
-  /* ══════════════════════════════════════════════════════════
-     OPEN / CLOSE
-     ═════════════════════════════════════════════════════════ */
-
+  /* ── Open / Close ── */
   function open(x, y, menuDef) {
     _ensureEl();
     _renderItems(menuDef, _menuEl);
     _position(x, y);
 
-    /* Tick ensures the initial transform is painted before transition fires */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         _menuEl.classList.add('ctx-visible');
@@ -423,15 +321,10 @@ const KOSContextMenu = (() => {
     _menuEl.classList.remove('ctx-visible');
   }
 
-  /* ══════════════════════════════════════════════════════════
-     GLOBAL EVENT WIRING
-     ═════════════════════════════════════════════════════════ */
-
-  /* contextmenu → decide + show */
+  /* ── Global event wiring ── */
   document.addEventListener('contextmenu', e => {
     const menuDef = _resolveMenu(e.target);
 
-    /* Always prevent the browser's native context menu on the desktop screen */
     const desktop = document.getElementById('screen-desktop');
     if (desktop?.classList.contains('active')) {
       e.preventDefault();
@@ -440,93 +333,40 @@ const KOSContextMenu = (() => {
     if (!menuDef) { close(); return; }
 
     e.preventDefault();
-    close();                          /* dismiss any previously open menu */
+    close();
     open(e.clientX, e.clientY, menuDef);
   });
 
-  /* Dismiss on outside click */
   document.addEventListener('pointerdown', e => {
     if (_menuEl && !_menuEl.contains(e.target)) close();
   });
 
-  /* Dismiss on Escape */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') close();
   });
 
-  /* Dismiss on scroll */
   document.addEventListener('scroll', close, { passive: true, capture: true });
 
-  /* Re-close spotlight shouldn't fight the menu */
   if (typeof KOSBus !== 'undefined') {
     KOSBus.on('kos:request-spotlight-open', () => close());
   }
 
-  /* ══════════════════════════════════════════════════════════
-     PUBLIC API
-     ═════════════════════════════════════════════════════════ */
-
-  /**
-   * Register a context menu for a specific app.
-   * The menu replaces the default window actions menu.
-   *
-   * @param {string}   appId    - matches data-app-id on the .window element
-   * @param {Array}    menuDef  - array of menu item objects (see shape above)
-   *
-   * @example
-   *   KOSContextMenu.register('my-notes', [
-   *     { label: 'New Note', icon: 'fa-plus',    action: () => notes.new() },
-   *     { type: 'sep' },
-   *     { label: 'Close',    icon: 'fa-xmark',   variant: 'danger',
-   *       action: () => WM.close('my-notes') },
-   *   ]);
-   */
+  /* ── Public API ── */
   function register(appId, menuDef) {
     _appMenus[appId] = menuDef;
   }
 
-  /**
-   * Register a context menu for any custom HTML zone via CSS selector.
-   * Runs BEFORE built-in zones so you can override desktop/topbar.
-   *
-   * @param {string}          selector  - CSS selector (uses .closest())
-   * @param {Array|Function}  menuDef   - item array OR fn(target) → array
-   *
-   * @example
-   *   KOSContextMenu.registerZone('#my-canvas', [
-   *     { label: 'Clear Canvas', icon: 'fa-eraser', action: () => canvas.clear() },
-   *   ]);
-   */
   function registerZone(selector, menuDef) {
-    _zoneRegs.unshift({ selector, menuDef });   /* prepend: later calls win */
+    _zoneRegs.unshift({ selector, menuDef });
   }
 
-  /**
-   * Unregister an app's context menu (e.g. on app uninstall).
-   * @param {string} appId
-   */
   function unregister(appId) {
     delete _appMenus[appId];
   }
 
-  /**
-   * Programmatically open a menu at a given coordinate.
-   * Useful for long-press simulation on touch devices.
-   *
-   * @param {number} x
-   * @param {number} y
-   * @param {Array}  menuDef
-   */
   function openAt(x, y, menuDef) {
     _ensureEl();
     open(x, y, menuDef);
-  }
-
-  /* Listen to the KOSBus registry-changed so we rebuild app menu
-     registrations (not needed for the menu itself, but useful for
-     Studio-published apps that call register() in their own script). */
-  if (typeof KOSBus !== 'undefined') {
-    KOSBus.on('kos:registry-changed', () => { /* no-op; apps re-register themselves */ });
   }
 
   return { register, unregister, registerZone, open: openAt, close };

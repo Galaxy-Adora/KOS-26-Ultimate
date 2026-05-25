@@ -2,70 +2,34 @@
  * KOS Ultimate 2026 — Core System Utility
  * Module: Root System Terminal CLI
  * Location: /terminal.js (Root Directory)
- *
- * New in Alpha 9:
- *   passwd          — change / reset / disable the login password
- *   wallpaper       — reset or switch the desktop wallpaper
- *   purge           — securely wipe KOSFS storage (password-gated)
- *   Interactive prompt system — mid-session masked input for credentials
  */
 
 (function () {
     const appId = 'terminal';
 
-    /* ═══════════════════════════════════════════════════════════
-       §1  STORAGE KEYS  (must match kos-kernel.js)
-    ═══════════════════════════════════════════════════════════ */
-    const KEY_PASSWORD    = 'kos-password';       // custom password override
-    const KEY_NO_PASSWORD = 'kos-no-password';    // 'true' → skip login screen
+    const KEY_PASSWORD    = 'kos-password';
+    const KEY_NO_PASSWORD = 'kos-no-password';
     const DEFAULT_PASS    = 'kosul';
 
-    /* ═══════════════════════════════════════════════════════════
-       §2  HELPERS
-    ═══════════════════════════════════════════════════════════ */
-
-    /** Returns the current active password (custom or default). */
     function _getPass() {
         return localStorage.getItem(KEY_PASSWORD) || DEFAULT_PASS;
     }
 
-    /** Returns true if password-less login is enabled. */
     function _isNoPass() {
         return localStorage.getItem(KEY_NO_PASSWORD) === 'true';
     }
 
-    /** Verify a supplied string against the current password. */
     function _verifyPass(input) {
         return input === _getPass();
     }
 
-    /* ═══════════════════════════════════════════════════════════
-       §3  TERMINAL STATE
-    ═══════════════════════════════════════════════════════════ */
-
     const RootTerminal = {
         history      : [],
         historyIndex : -1,
-
-        /**
-         * Interactive mode — when set, every Enter keypress routes here
-         * instead of processCommand(). Cleared by the handler itself.
-         *
-         * Shape:
-         *   {
-         *     maskInput : boolean,          // hides typed chars
-         *     prompt    : string,           // prompt label shown to user
-         *     onInput   : async fn(value)   // called with each line
-         *   }
-         */
         _interactive : null,
 
-        /* ═══════════════════════════════════════════════════════
-           §4  COMMANDS
-        ═══════════════════════════════════════════════════════ */
         commands: {
 
-            /* ── help ─────────────────────────────────────────── */
             'help': {
                 description: 'List all available environment utilities',
                 execute: () => [
@@ -77,7 +41,6 @@
                 ]
             },
 
-            /* ── clear ────────────────────────────────────────── */
             'clear': {
                 description: 'Flush the console frame view buffer',
                 execute: (args, outputEl) => {
@@ -86,7 +49,6 @@
                 }
             },
 
-            /* ── sysinfo ──────────────────────────────────────── */
             'sysinfo': {
                 description: 'Read core environment and UI metrics',
                 execute: () => {
@@ -110,7 +72,6 @@
                 }
             },
 
-            /* ── tree ─────────────────────────────────────────── */
             'tree': {
                 description: 'Display visual tree map of all KOSFS IndexedDB records',
                 execute: async (args, outputEl) => {
@@ -160,20 +121,6 @@
                 }
             },
 
-            /* ══════════════════════════════════════════════════
-               NEW:  systree
-               Renders the KOS project's actual source file tree
-               from KOS_SYS_MANIFEST (sys-manifest.js).
-               This shows YOUR CODE files — not KOSFS user data.
-
-               Usage:
-                 systree              full project tree
-                 systree --kernel     root kernel files only
-                 systree --apps       /apps/ folder only
-                 systree --css        /css/ folder only
-                 systree --docs       /documents/ assets only
-                 systree --stats      file counts + sizes by folder
-            ══════════════════════════════════════════════════ */
             'systree': {
                 description: 'Render the KOS source file tree from sys-manifest.js  (--kernel | --apps | --css | --docs | --stats)',
                 execute: (args) => {
@@ -188,14 +135,12 @@
                     const flag  = args[0]?.toLowerCase();
                     const files = KOS_SYS_MANIFEST.files;
 
-                    /* ── helper: format bytes ── */
                     const fmt = b => {
                         if (b >= 1048576) return (b / 1048576).toFixed(1).padStart(6) + ' MB';
                         if (b >= 1024)    return (b / 1024).toFixed(1).padStart(6)    + ' KB';
                         return String(b).padStart(6) + '  B';
                     };
 
-                    /* ── helper: render a flat list as a tree branch ── */
                     const branch = (items, indent = '') => {
                         const out = [];
                         items.forEach((f, i) => {
@@ -209,7 +154,6 @@
                         return out;
                     };
 
-                    /* ── --stats ── */
                     if (flag === '--stats') {
                         const groups = {
                             'Kernel files  (/)':      files.filter(f => f.cat === 'kernel'),
@@ -239,14 +183,12 @@
                         return lines;
                     }
 
-                    /* ── filter helpers ── */
                     const kernelFiles = files.filter(f => f.cat === 'kernel' || f.cat === 'config' || f.cat === 'doc');
                     const appFiles    = files.filter(f => f.cat === 'app');
                     const cssFiles    = files.filter(f => f.cat === 'css');
                     const cssAppFiles = files.filter(f => f.cat === 'css-app');
                     const assetFiles  = files.filter(f => f.cat === 'asset');
 
-                    /* ── single-folder flags ── */
                     if (flag === '--kernel') {
                         return [
                             `kos-root/  [kernel + config layer]`,
@@ -285,13 +227,11 @@
                         ];
                     }
 
-                    /* ── full tree (default) ── */
                     const lines = [];
                     lines.push(`KOS ${KOS_SYS_MANIFEST.name}  —  Alpha ${KOS_SYS_MANIFEST.alpha}  (${KOS_SYS_MANIFEST.updated})`);
                     lines.push('═'.repeat(62));
                     lines.push('kos-root/');
 
-                    /* kernel / root files */
                     kernelFiles.forEach((f, i) => {
                         const isLastKernel = i === kernelFiles.length - 1 && !appFiles.length && !cssFiles.length && !assetFiles.length;
                         const prefix = isLastKernel ? '└── ' : '├── ';
@@ -299,7 +239,6 @@
                         lines.push(`${prefix}${name.padEnd(38)}${fmt(f.size)}  ${f.desc || ''}`);
                     });
 
-                    /* apps/ */
                     const appTotal = appFiles.reduce((s,f)=>s+f.size,0);
                     lines.push(`├── apps/  [${appFiles.length} modules · ${fmt(appTotal).trim()}]`);
                     appFiles.forEach((f, i) => {
@@ -308,7 +247,6 @@
                         lines.push(`│   ${last?'└──':'├──'} ${name.padEnd(34)}${fmt(f.size)}  ${f.desc||''}`);
                     });
 
-                    /* css/ */
                     const cssTotal = [...cssFiles,...cssAppFiles].reduce((s,f)=>s+f.size,0);
                     lines.push(`├── css/  [${cssFiles.length + cssAppFiles.length} sheets · ${fmt(cssTotal).trim()}]`);
                     cssFiles.forEach((f, i) => {
@@ -322,7 +260,6 @@
                         lines.push(`│       ${last?'└──':'├──'} ${name.padEnd(30)}${fmt(f.size)}  ${f.desc||''}`);
                     });
 
-                    /* documents/ */
                     const assetTotal = assetFiles.reduce((s,f)=>s+f.size,0);
                     lines.push(`└── documents/  [${assetFiles.length} assets · ${fmt(assetTotal).trim()}]`);
                     assetFiles.forEach((f, i) => {
@@ -331,7 +268,6 @@
                         lines.push(`    ${last?'└──':'├──'} ${name.padEnd(42)}${fmt(f.size)}  ${f.desc||''}`);
                     });
 
-                    /* summary */
                     const grand = files.reduce((s,f) => s + f.size, 0);
                     lines.push('');
                     lines.push(`${files.length} files  ·  ${fmt(grand).trim()} total on disk`);
@@ -341,7 +277,6 @@
                 }
             },
 
-            /* ── theme ────────────────────────────────────────── */
             'theme': {
                 description: 'Mutate global visual theme  (light | dark)',
                 execute: (args) => {
@@ -353,7 +288,6 @@
                 }
             },
 
-            /* ── glass ────────────────────────────────────────── */
             'glass': {
                 description: 'Toggle liquid glass compositor  (on | off)',
                 execute: (args) => {
@@ -365,75 +299,64 @@
                 }
             },
 
-            /* ── brightness ───────────────────────────────────── */
             'brightness': {
                 description: 'Set panel brightness index (10 – 100)',
                 execute: (args) => {
                     const v = parseInt(args[0], 10);
                     if (isNaN(v) || v < 10 || v > 100) return 'Error: value must be 10–100.';
-                    window.KOSDisplay?.setBrightness(v / 100);
+                    /* setBrightness expects 10–100, not a 0–1 fraction */
+                    window.KOSDisplay?.setBrightness(v);
                     return `Panel backlight → ${v}%`;
                 }
             },
 
-            /* ── zoom ─────────────────────────────────────────── */
             'zoom': {
                 description: 'Force layout zoom (50 – 250)',
                 execute: (args) => {
                     const v = parseInt(args[0], 10);
                     if (isNaN(v) || v < 50 || v > 250) return 'Error: value must be 50–250.';
-                    window.KOSDisplay?.setZoom(v / 100);
+                    /* setZoom expects the percentage value directly (50–250) */
+                    window.KOSDisplay?.setZoom(v);
                     return `Workspace display → ${v}%`;
                 }
             },
 
-            /* ── textsize ─────────────────────────────────────── */
             'textsize': {
                 description: 'Step typography scale level (1 – 6)',
                 execute: (args) => {
                     const v = parseInt(args[0], 10);
                     if (isNaN(v) || v < 1 || v > 6) return 'Error: steps 1–6.';
-                    window.KOSDisplay?.setFontSize(v);
+                    /* correct method name is setTextSize, not setFontSize */
+                    window.KOSDisplay?.setTextSize(v);
                     return `Typography size index → ${v}`;
                 }
             },
 
-            /* ── bold ─────────────────────────────────────────── */
             'bold': {
                 description: 'Enforce accessibility bold weights  (on | off)',
                 execute: (args) => {
                     const t = args[0]?.toLowerCase();
                     if (t !== 'on' && t !== 'off') return 'Usage: bold on  |  bold off';
-                    window.KOSDisplay?.setBoldText(t === 'on');
+                    /* correct method name is setBold, not setBoldText */
+                    window.KOSDisplay?.setBold(t === 'on');
                     return `Bold text → ${t.toUpperCase()}`;
                 }
             },
 
-            /* ── displayreset ─────────────────────────────────── */
             'displayreset': {
                 description: 'Restore display settings to defaults',
                 execute: () => {
-                    window.KOSDisplay?.apply?.();
+                    /* correct method is reset(), not apply() */
+                    window.KOSDisplay?.reset();
                     return 'Display configuration matrices returned to defaults.';
                 }
             },
 
-            /* ══════════════════════════════════════════════════
-               NEW:  passwd
-               Change / disable / reset the login password.
-
-               Usage:
-                 passwd              → interactive 3-step change
-                 passwd --nopass     → disable login screen (auto-login)
-                 passwd --reset      → restore default password 'kosul'
-                 passwd status       → show current auth mode
-            ══════════════════════════════════════════════════ */
             'passwd': {
                 description: 'Manage login credentials  (--nopass | --reset | status)',
                 execute: async (args, outputEl) => {
                     const flag = args[0]?.toLowerCase();
 
-                    /* ── status ── */
                     if (flag === 'status') {
                         const mode = _isNoPass()
                             ? 'NO-PASSWORD  (auto-login enabled)'
@@ -447,7 +370,6 @@
                         ];
                     }
 
-                    /* ── --reset  (restore default, re-enable login) ── */
                     if (flag === '--reset') {
                         RootTerminal.logLine('Verify current password to reset auth:', 'system-msg');
                         RootTerminal._startInteractive({
@@ -468,7 +390,6 @@
                         return null;
                     }
 
-                    /* ── --nopass  (skip login screen) ── */
                     if (flag === '--nopass') {
                         if (_isNoPass()) {
                             return 'Auto-login is already active. Use "passwd --reset" to re-enable the login screen.';
@@ -491,7 +412,6 @@
                         return null;
                     }
 
-                    /* ── default: 3-step interactive password change ── */
                     const state = { current: null, next: null };
                     RootTerminal.logLine('Enter current password:', 'system-msg');
                     RootTerminal._startInteractive({
@@ -499,7 +419,6 @@
                         prompt    : '[current password]',
                         onInput   : async (val) => {
                             if (state.current === null) {
-                                /* Step 1 — verify current */
                                 if (!_verifyPass(val)) {
                                     RootTerminal.logLine('✗  Incorrect password.', 'error-msg');
                                     RootTerminal._stopInteractive();
@@ -507,10 +426,8 @@
                                 }
                                 state.current = val;
                                 RootTerminal.logLine('Enter new password:', 'system-msg');
-                                return; // stay in interactive, await next input
-
+                                return;
                             } else if (state.next === null) {
-                                /* Step 2 — capture new password */
                                 if (val.length < 4) {
                                     RootTerminal.logLine('✗  Password must be at least 4 characters. Try again:', 'error-msg');
                                     return;
@@ -518,16 +435,13 @@
                                 state.next = val;
                                 RootTerminal.logLine('Confirm new password:', 'system-msg');
                                 return;
-
                             } else {
-                                /* Step 3 — confirm */
                                 if (val !== state.next) {
                                     RootTerminal.logLine('✗  Passwords do not match. Operation aborted.', 'error-msg');
                                     RootTerminal._stopInteractive();
                                     return;
                                 }
                                 localStorage.setItem(KEY_PASSWORD, state.next);
-                                // Re-enable password login if it was disabled
                                 localStorage.removeItem(KEY_NO_PASSWORD);
                                 RootTerminal.logLine('✓  Password updated successfully. Changes take effect at next login.', 'system-msg');
                                 RootTerminal._stopInteractive();
@@ -538,21 +452,11 @@
                 }
             },
 
-            /* ══════════════════════════════════════════════════
-               NEW:  wallpaper
-               Reset or switch the desktop wallpaper.
-
-               Usage:
-                 wallpaper reset            → restore default wallpaper
-                 wallpaper list             → show available stock wallpapers
-                 wallpaper set <name|index> → apply a stock wallpaper by name
-            ══════════════════════════════════════════════════ */
             'wallpaper': {
                 description: 'Control the desktop wallpaper  (reset | list | set <name>)',
                 execute: (args) => {
                     const sub = args[0]?.toLowerCase();
 
-                    /* ── reset ── */
                     if (!sub || sub === 'reset') {
                         if (typeof selectWallpaper === 'function') {
                             selectWallpaper('default');
@@ -564,7 +468,6 @@
                         return '✓  Wallpaper reset to system default.';
                     }
 
-                    /* ── list ── */
                     if (sub === 'list') {
                         if (typeof STOCK_WALLPAPERS === 'undefined') {
                             return 'STOCK_WALLPAPERS table unavailable.';
@@ -579,7 +482,6 @@
                         ];
                     }
 
-                    /* ── set <name | index> ── */
                     if (sub === 'set') {
                         const target = args[1];
                         if (!target) return 'Usage: wallpaper set <name>  or  wallpaper set <index>';
@@ -588,13 +490,11 @@
                             return 'STOCK_WALLPAPERS table unavailable.';
                         }
 
-                        // Try as numeric index first
                         const idx = parseInt(target, 10);
                         let key;
                         if (!isNaN(idx) && idx >= 0 && idx < STOCK_WALLPAPERS.length) {
                             key = idx === 0 ? 'default' : 'stock-' + idx;
                         } else {
-                            // Try as name (case-insensitive)
                             const match = STOCK_WALLPAPERS.findIndex(
                                 w => w.label.toLowerCase() === target.toLowerCase()
                             );
@@ -619,18 +519,6 @@
                 }
             },
 
-            /* ══════════════════════════════════════════════════
-               NEW:  purge
-               Securely delete KOSFS storage. Password required.
-               This operation is IRREVERSIBLE.
-
-               Usage:
-                 purge --all          → wipe ALL file types
-                 purge --photos       → wipe images only
-                 purge --videos       → wipe videos only
-                 purge --audios       → wipe audio files only
-                 purge --documents    → wipe documents only
-            ══════════════════════════════════════════════════ */
             'purge': {
                 description: 'Securely erase KOSFS storage — IRREVERSIBLE  (requires password)',
                 execute: async (args, outputEl) => {
@@ -654,7 +542,6 @@
                         return 'KOSFS kernel module is unreachable. Purge aborted.';
                     }
 
-                    // Map flag → KOSFS type constant (null = all)
                     const flagTypeMap = {
                         '--photos'   : 'image',
                         '--videos'   : 'video',
@@ -709,7 +596,6 @@
                                     'system-msg'
                                 );
 
-                                // Notify other open apps so they refresh
                                 KOSBus?.dispatch('kos:fs-delete', { deletedBy: 'terminal', bulk: true });
 
                             } catch (err) {
@@ -722,7 +608,6 @@
                 }
             },
 
-            /* ── exit ─────────────────────────────────────────── */
             'exit': {
                 description: 'Close the terminal window',
                 execute: () => {
@@ -732,19 +617,6 @@
             },
         },
 
-        /* ═══════════════════════════════════════════════════════
-           §5  INTERACTIVE PROMPT SYSTEM
-           Used by passwd and purge to collect masked input
-           mid-session without a separate dialog.
-        ═══════════════════════════════════════════════════════ */
-
-        /**
-         * Begin an interactive multi-step input session.
-         * While active, Enter sends input to opts.onInput instead of
-         * processCommand(). Typing is optionally masked (passwords).
-         *
-         * @param {{ maskInput: boolean, prompt: string, onInput: function }} opts
-         */
         _startInteractive(opts) {
             this._interactive = opts;
             const input = document.getElementById('term-input-field');
@@ -753,7 +625,6 @@
             if (label) label.textContent = opts.prompt + ' ›';
         },
 
-        /** End the interactive session and restore normal terminal state. */
         _stopInteractive() {
             this._interactive = null;
             const input = document.getElementById('term-input-field');
@@ -761,10 +632,6 @@
             if (input) { input.type = 'text'; input.value = ''; }
             if (label)   label.textContent = 'system@kos:#';
         },
-
-        /* ═══════════════════════════════════════════════════════
-           §6  INIT
-        ═══════════════════════════════════════════════════════ */
 
         init() {
             const body = document.getElementById('terminal-body');
@@ -793,7 +660,6 @@
 
             inputField.addEventListener('keydown', async (e) => {
 
-                /* ── Arrow history (only in normal mode) ── */
                 if (e.key === 'ArrowUp' && !this._interactive) {
                     e.preventDefault();
                     if (this.historyIndex > 0) {
@@ -819,9 +685,7 @@
                 const rawValue = inputField.value.trim();
                 inputField.value = '';
 
-                /* ── Interactive (password) mode ── */
                 if (this._interactive) {
-                    // Log masked echo so the user sees their action
                     this.logLine(`${this._interactive.prompt} › ${'•'.repeat(rawValue.length || 1)}`, 'user-cmd');
                     try {
                         await this._interactive.onInput(rawValue);
@@ -833,7 +697,6 @@
                     return;
                 }
 
-                /* ── Normal command mode ── */
                 if (!rawValue) return;
                 this.history.push(rawValue);
                 this.historyIndex = this.history.length;
@@ -842,10 +705,6 @@
                 container.scrollTop = container.scrollHeight;
             });
         },
-
-        /* ═══════════════════════════════════════════════════════
-           §7  COMMAND PROCESSOR
-        ═══════════════════════════════════════════════════════ */
 
         async processCommand(rawInput, outputArea) {
             const parts   = rawInput.trim().split(/\s+/);
@@ -865,16 +724,11 @@
                 } else if (result !== undefined) {
                     this.logLine(result);
                 }
-                // Sync any UI toggles in Settings that may have changed
                 try { window.KOSApps?.uimanager?._syncThemeToggles?.(); } catch (_) {}
             } catch (err) {
                 this.logLine(`RUNTIME ERROR: ${err.message}`, 'error-msg');
             }
         },
-
-        /* ═══════════════════════════════════════════════════════
-           §8  LOG HELPER
-        ═══════════════════════════════════════════════════════ */
 
         logLine(text, className = '') {
             const outputArea = document.getElementById('term-output-area');
@@ -884,15 +738,10 @@
             div.textContent = text;
             outputArea.appendChild(div);
 
-            // Auto-scroll
             const container = outputArea.closest('.term-container');
             if (container) container.scrollTop = container.scrollHeight;
         },
     };
-
-    /* ═══════════════════════════════════════════════════════════
-       §9  WM REGISTRATION
-    ═══════════════════════════════════════════════════════════ */
 
     window.KOSApps = window.KOSApps || {};
     window.KOSApps[appId] = { init: () => RootTerminal.init() };
