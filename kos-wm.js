@@ -4,56 +4,52 @@
    Reads AppManifest for app metadata.
    Communicates outward ONLY via KOSBus events.
 
-   ADDING A WINDOW FEATURE: only edit this file.
+   CHANGES FROM ORIGINAL:
+   • Added _onCloseFns: {} to WM state
+   • Added setOnClose(id, fn) public method
+   • close(id) now fires the registered onClose callback —
+     fixes blob URL leaks and orphaned listeners in videos/runner
+   • Removed _buildLightboxDOM() and its call in _buildWindowDOM —
+     photos.js builds its own lightbox; the WM-built one was
+     immediately hidden by photos.css display:none !important
    ══════════════════════════════════════════════════════════════ */
 
 const WM = {
-  registry: {},       // id → { el, open, minimized, maximized, savedRect }
-  zTop: 500,
-  TOPBAR_H: 54,
-  MIN_W: 300,
-  MIN_H: 200,
-  _loadedAssets: {},  // id → true  (tracks injected CSS/JS)
-  _focusedId:    null,  // track current focused window to avoid full loop
-  _saveTimer:    null,  // debounce handle for saveSession
+  registry     : {},
+  zTop         : 500,
+  TOPBAR_H     : 54,
+  MIN_W        : 300,
+  MIN_H        : 200,
+  _loadedAssets: {},
+  _focusedId   : null,
+  _saveTimer   : null,
+  _onCloseFns  : {},      // id → cleanup fn registered via setOnClose()
 
-  /* ─────────────────────────────────────────────────────────────
-     saveSession debounced — localStorage.setItem + JSON.stringify
-     is synchronous and blocks the main thread. Debouncing to 400 ms
-     means rapid actions (drag, quick-open) only write once.
-     ───────────────────────────────────────────────────────────── */
+  /* ─── Debounced session save ─── */
   _scheduleSave() {
     clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => this.saveSession(), 400);
   },
 
-  /* ─────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════
      PUBLIC API
-     ───────────────────────────────────────────────────────────── */
+  ═══════════════════════════════════════════════════════════ */
 
-  /**
-   * Launch an app by id.
-   * If its window exists → open/restore/focus.
-   * If no window → bounce icon + toast.
-   * CSS/JS are injected on first launch.
-   */
   launch(id) {
     const app = AppManifest.find(a => a.id === id);
     if (!app) return;
 
-    // Close spotlight if open (no import needed — uses event)
     KOSBus.dispatch('kos:request-spotlight-close');
 
     const w = this.registry[id];
 
     if (w) {
-      if (!w.open)      this.open(id);
+      if (!w.open)          this.open(id);
       else if (w.minimized) this.restore(id);
-      else              this.focus(id);
+      else                  this.focus(id);
       return;
     }
 
-    /* No window — no initData → coming-soon bounce */
     if (!app.initData) {
       showToast(`${app.name} — coming soon`);
       const dockIcon = document.querySelector(`.dock-item[data-app-id="${id}"] .app-icon`);
@@ -64,7 +60,6 @@ const WM = {
       return;
     }
 
-    /* First launch: inject CSS, then build window and open */
     this._injectAssets(app, () => {
       const desktop = document.getElementById('screen-desktop');
       const el = this._buildWindowDOM(app);
@@ -81,7 +76,6 @@ const WM = {
     w.el.classList.remove('win-minimized');
     w.open = true; w.minimized = false;
     this.focus(id);
-    /* Call the app's onOpen lifecycle hook if registered */
     if (w.onOpen) w.onOpen();
     applySysOverride(id);
     this._syncDockHide();
@@ -92,16 +86,24 @@ const WM = {
   close(id) {
     const w = this.registry[id];
     if (!w) return;
-    /* Clear topbar controls if this was the maximized window */
+
+    /* Fire registered cleanup callback — revokes blob URLs,
+       cancels rAF loops, removes global key listeners, etc.
+       Previously setOnClose was undefined so these never ran. */
+    if (this._onCloseFns[id]) {
+      try { this._onCloseFns[id](); } catch (e) { console.warn('[WM] onClose error:', e); }
+    }
+
     if (w.maximized) this._clearTopbarControls();
-    /* Clear snap topbar controls if this was a snapped window */
-    if (w.snapped) this._clearSnapControls(id);
+    if (w.snapped)   this._clearSnapControls(id);
+
     w.el.classList.remove('win-open', 'win-minimized', 'win-maximized',
                           'win-snapped-left', 'win-snapped-right');
     w.open = false; w.minimized = false; w.maximized = false; w.snapped = null;
-    /* Reset maximize icon */
+
     const maxBtn = w.el.querySelector('.win-ctrl-btn[data-action="maximize"] i');
     if (maxBtn) maxBtn.className = 'fa-solid fa-window-maximize';
+
     this._syncDockHide();
     this._scheduleSave();
     KOSBus.dispatch('kos:app-closed', { appId: id });
@@ -110,15 +112,8 @@ const WM = {
   minimize(id) {
     const w = this.registry[id];
     if (!w || !w.open) return;
-    /* If maximized, clear topbar controls but keep maximized state
-       so the window restores to maximized when brought back */
-    if (w.maximized) {
-      this._clearTopbarControls();
-    }
-    /* If snapped, hide snap topbar controls (keep w.snapped so restore re-injects) */
-    if (w.snapped) {
-      this._clearSnapControls(id);
-    }
+    if (w.maximized) this._clearTopbarControls();
+    if (w.snapped)   this._clearSnapControls(id);
     w.el.classList.add('win-minimized');
     w.minimized = true;
     this._syncDockHide();
@@ -131,14 +126,8 @@ const WM = {
     if (!w) return;
     w.el.classList.remove('win-minimized');
     w.minimized = false;
-    /* Re-inject topbar controls if restoring a maximized window */
-    if (w.maximized) {
-      this._injectTopbarControls(id);
-    }
-    /* Re-inject snap topbar controls if restoring a snapped window */
-    if (w.snapped) {
-      this._injectSnapControls(id, w.snapped);
-    }
+    if (w.maximized) this._injectTopbarControls(id);
+    if (w.snapped)   this._injectSnapControls(id, w.snapped);
     this.focus(id);
     this._syncDockHide();
     this._scheduleSave();
@@ -151,53 +140,37 @@ const WM = {
     const maxBtn = w.el.querySelector('.win-ctrl-btn[data-action="maximize"] i');
 
     if (w.maximized) {
-      /* ── UN-MAXIMIZE ── */
-      /* 1. Fade the topbar controls out first, then snap geometry */
       this._clearTopbarControls();
-
-      /* Small delay so controls fade before titlebar re-expands */
       setTimeout(() => {
         w.el.classList.add('win-animating');
         w.el.classList.remove('win-maximized');
         w.maximized = false;
-
         if (w.savedRect) {
           const r = w.savedRect;
           Object.assign(w.el.style, {
             left: r.left, top: r.top, width: r.width, height: r.height,
           });
         }
-
         if (maxBtn) maxBtn.className = 'fa-solid fa-window-maximize';
-
         setTimeout(() => w.el.classList.remove('win-animating'), 480);
       }, 120);
-
     } else {
-      /* ── MAXIMIZE ── */
       w.savedRect = {
         left: w.el.style.left, top: w.el.style.top,
         width: w.el.style.width, height: w.el.style.height,
       };
-
       w.el.classList.add('win-animating', 'win-maximized');
       w.maximized = true;
-
-      /* 52 = maximized topbar height (top:0 + height:52px) — must match CSS */
       const MAX_TOPBAR_H = 44;
       Object.assign(w.el.style, {
         left: '0', top: MAX_TOPBAR_H + 'px',
         width: '100vw', height: `calc(100vh - ${MAX_TOPBAR_H}px)`,
       });
-
       if (maxBtn) maxBtn.className = 'fa-solid fa-window-restore';
       document.querySelector('.topbar')?.classList.add('topbar-maximized');
-
-      /* Inject floating topbar controls slightly after geometry starts */
       setTimeout(() => this._injectTopbarControls(id), 80);
       setTimeout(() => w.el.classList.remove('win-animating'), 480);
     }
-
     this._scheduleSave();
   },
 
@@ -206,8 +179,6 @@ const WM = {
     if (!w) return;
     this.zTop++;
     w.el.style.zIndex = this.zTop;
-    /* Only remove focus class from the PREVIOUS focused window — not all windows.
-       This is O(1) instead of O(n) and avoids touching every window's DOM on click. */
     if (this._focusedId && this._focusedId !== id) {
       const prev = this.registry[this._focusedId];
       if (prev) prev.el.classList.remove('win-focused');
@@ -238,7 +209,6 @@ const WM = {
     Object.entries(raw).forEach(([id, s]) => {
       const app = AppManifest.find(a => a.id === id);
       if (!app || !app.initData) return;
-      /* Ensure window exists */
       if (!this.registry[id]) {
         const desktop = document.getElementById('screen-desktop');
         const el = this._buildWindowDOM(app);
@@ -262,18 +232,13 @@ const WM = {
 
   clearSession() { localStorage.removeItem(KEY_SESSION); },
 
-  /* ─────────────────────────────────────────────────────────────
-     INTERNAL — TOPBAR CONTROLS
-     When a window is maximised, its own titlebar collapses and
-     floating controls are injected into the topbar area.
-     These stay in the window's DOM subtree via JS reference but
-     live at body level (bypassing transform stacking context).
-     ───────────────────────────────────────────────────────────── */
+  /* ═══════════════════════════════════════════════════════════
+     TOPBAR CONTROLS (maximized window)
+  ═══════════════════════════════════════════════════════════ */
   _injectTopbarControls(id) {
     const app   = AppManifest.find(a => a.id === id);
     const label = app ? (app.initData?.title || app.name) : id;
 
-    /* ── Animate system-name swap ── */
     const sysName = document.querySelector('.system-name');
     if (sysName && !sysName.dataset.kosOriginal) {
       sysName.dataset.kosOriginal = sysName.textContent;
@@ -284,7 +249,6 @@ const WM = {
       }, 180);
     }
 
-    /* ── Build or reuse the floating controls panel ── */
     let ctrl = document.getElementById('topbar-win-controls');
     if (!ctrl) {
       ctrl = document.createElement('div');
@@ -307,7 +271,7 @@ const WM = {
     ctrl.querySelectorAll('.twc-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        const wId   = document.getElementById('topbar-win-controls')?.dataset.winId;
+        const wId    = document.getElementById('topbar-win-controls')?.dataset.winId;
         const action = btn.dataset.action;
         if (!wId) return;
         if (action === 'close')    this.close(wId);
@@ -316,14 +280,12 @@ const WM = {
       });
     });
 
-    /* Trigger entrance animation on next frame */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => ctrl.classList.add('twc-visible'));
     });
   },
 
   _clearTopbarControls() {
-    /* ── Restore system-name ── */
     const sysName = document.querySelector('.system-name');
     if (sysName?.dataset.kosOriginal) {
       const orig = sysName.dataset.kosOriginal;
@@ -334,13 +296,7 @@ const WM = {
         sysName.classList.remove('sysname-fading');
       }, 180);
     }
-
-    /* ── Always restore the topbar to its normal floating-pill state ──
-       This must happen here (not only in maximize()) so that closing or
-       minimizing while maximized also resets the topbar width. */
     document.querySelector('.topbar')?.classList.remove('topbar-maximized');
-
-    /* ── Animate controls out then remove ── */
     const ctrl = document.getElementById('topbar-win-controls');
     if (ctrl) {
       ctrl.classList.remove('twc-visible');
@@ -348,16 +304,11 @@ const WM = {
     }
   },
 
-  /* ─────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════
      SNAP TOPBAR CONTROLS
-     When a window is side-snapped, its titlebar collapses and
-     floating controls appear in the topbar on the matching edge:
-       left-snapped  window → controls at far-left  of topbar
-       right-snapped window → controls at far-right of topbar
-     ───────────────────────────────────────────────────────────── */
+  ═══════════════════════════════════════════════════════════ */
   _injectSnapControls(id, zone) {
     const panelId = zone === 'left' ? 'topbar-snap-left' : 'topbar-snap-right';
-
     let ctrl = document.getElementById(panelId);
     if (!ctrl) {
       ctrl = document.createElement('div');
@@ -387,7 +338,6 @@ const WM = {
         if (action === 'close')    this.close(wId);
         if (action === 'minimize') this.minimize(wId);
         if (action === 'unsnap') {
-          /* Restore to pre-snap floating geometry */
           this._clearSnapControls(wId);
           this._unsnapWindow(wId);
           this.focus(wId);
@@ -396,7 +346,6 @@ const WM = {
       });
     });
 
-    /* Double-rAF trick for entrance animation (avoids forced reflow) */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => ctrl.classList.add('snap-ctrl-visible'));
     });
@@ -407,24 +356,20 @@ const WM = {
     if (!w?.snapped) return;
     const panelId = w.snapped === 'left' ? 'topbar-snap-left' : 'topbar-snap-right';
     const ctrl = document.getElementById(panelId);
-    /* Guard: only remove if this panel belongs to the window being cleared */
     if (ctrl && ctrl.dataset.winId === id) {
       ctrl.classList.remove('snap-ctrl-visible');
       setTimeout(() => { ctrl.parentNode && ctrl.remove(); }, 320);
     }
   },
 
-  /* ─────────────────────────────────────────────────────────────
-     INTERNAL — ASSET INJECTION
-     Injects app CSS (once) then calls callback.
-     JS is already loaded via <script> tags in index.html
-     for simplicity / cross-origin compatibility.
-     ───────────────────────────────────────────────────────────── */
+  /* ═══════════════════════════════════════════════════════════
+     ASSET INJECTION
+  ═══════════════════════════════════════════════════════════ */
   _injectAssets(app, cb) {
     if (this._loadedAssets[app.id]) { cb(); return; }
     if (app.cssPath) {
       const link = document.createElement('link');
-      link.rel = 'stylesheet';
+      link.rel  = 'stylesheet';
       link.href = app.cssPath;
       link.onload = () => { this._loadedAssets[app.id] = true; cb(); };
       link.onerror = () => {
@@ -438,9 +383,12 @@ const WM = {
     }
   },
 
-  /* ─────────────────────────────────────────────────────────────
-     INTERNAL — WINDOW DOM BUILDER
-     ───────────────────────────────────────────────────────────── */
+  /* ═══════════════════════════════════════════════════════════
+     WINDOW DOM BUILDER
+     Note: _buildLightboxDOM() removed — photos.js builds its
+     own lightbox inside gallery-body and photos.css already
+     hides the old one with display:none !important.
+  ═══════════════════════════════════════════════════════════ */
   _buildWindowDOM(app) {
     const cfg = app.initData || {};
     const el  = document.createElement('div');
@@ -482,11 +430,14 @@ const WM = {
     if (cfg.special === 'browser') {
       el.appendChild(this._buildBrowserBody());
     } else if (cfg.special === 'gallery') {
+      /* photos.js replaces this div's innerHTML with its full shell
+         (including its own lightbox) when the app opens. */
       const main = document.createElement('div');
       main.className = 'gallery-main';
       main.id = 'gallery-body';
       el.appendChild(main);
-      el.appendChild(this._buildLightboxDOM());
+      /* _buildLightboxDOM() call removed — dead DOM, immediately
+         overwritten by photos.js and hidden by photos.css */
     } else {
       const body = document.createElement('div');
       body.className = 'win-body' + (cfg.bodyClass ? ' ' + cfg.bodyClass : '');
@@ -537,27 +488,9 @@ const WM = {
     return wrap;
   },
 
-  _buildLightboxDOM() {
-    const lb = document.createElement('div');
-    lb.className = 'gallery-lightbox';
-    lb.id = 'gallery-lightbox';
-    lb.innerHTML = `
-      <div class="lb-overlay-bg"></div>
-      <button class="lb-close" id="lb-close"><i class="fa-solid fa-chevron-left"></i></button>
-      <div class="lb-center"><img class="lb-img" id="lb-img" src="" alt=""></div>
-      <div class="lb-bar">
-        <button class="lb-action-btn" id="lb-set-wp"><i class="fa-solid fa-image"></i><span>Set as Wallpaper</span></button>
-        <span class="lb-label-badge" id="lb-label"></span>
-        <button class="lb-action-btn lb-danger" id="lb-delete"><i class="fa-solid fa-trash"></i><span>Delete</span></button>
-      </div>`;
-    return lb;
-  },
-
-  /* ─────────────────────────────────────────────────────────────
-     INTERNAL — REGISTER WINDOW
-     Sets up initial geometry, traffic light listeners,
-     drag and resize. Called after DOM is inserted.
-     ───────────────────────────────────────────────────────────── */
+  /* ═══════════════════════════════════════════════════════════
+     REGISTER WINDOW
+  ═══════════════════════════════════════════════════════════ */
   register(app) {
     const id  = typeof app === 'string' ? app : app.id;
     const cfg = typeof app === 'string' ? {} : (app.initData || {});
@@ -574,24 +507,28 @@ const WM = {
 
     this.registry[id] = {
       el, open: false, minimized: false, maximized: false,
-      snapped: null,   // null | 'left' | 'right'
-      savedRect: null,
-      onOpen: null,    // set by app modules via WM.setOnOpen(id, fn)
+      snapped: null, savedRect: null,
+      onOpen: null,
     };
 
-    /* Attach onOpen from the KOSApps namespace if the module is already loaded */
     const appMod = window.KOSApps?.[id];
     if (appMod?.init) {
-      this.registry[id].onOpen = () => appMod.init(el.querySelector('.win-body, .gallery-main, .br-shell') || el);
+      this.registry[id].onOpen = () => appMod.init(
+        el.querySelector('.win-body, .gallery-main, .br-shell') || el
+      );
     }
 
-    /* Consume any pending setOnOpen() hook — takes priority over KOSApps fallback */
     if (this._pendingOnOpen?.[id]) {
       this.registry[id].onOpen = this._pendingOnOpen[id];
       delete this._pendingOnOpen[id];
     }
 
-    /* Window controls */
+    /* Consume any pending setOnClose hook */
+    if (this._pendingOnClose?.[id]) {
+      this._onCloseFns[id] = this._pendingOnClose[id];
+      delete this._pendingOnClose[id];
+    }
+
     el.querySelectorAll('.win-ctrl-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
@@ -608,37 +545,45 @@ const WM = {
   },
 
   /**
-   * Allow app modules to register their init hook after the WM has loaded.
-   * Called by each app's JS file (e.g., apps/browser.js).
+   * Register the app's onOpen lifecycle hook.
+   * Called by each app module at script-load time.
    */
   setOnOpen(id, fn) {
     if (this.registry[id]) this.registry[id].onOpen = fn;
     else {
-      /* App may not have a window yet (lazy). Store for when register() runs. */
       this._pendingOnOpen = this._pendingOnOpen || {};
       this._pendingOnOpen[id] = fn;
     }
   },
 
-  /* ─── Dock auto-hide sync (WM emits event; Dock handles the hiding) ─── */
+  /**
+   * Register a cleanup callback fired when the app window is closed.
+   * Use this to revoke Object URLs, cancel rAF loops, and remove
+   * global event listeners — previously this method was missing
+   * entirely, so WM.setOnClose?.() calls in videos.js and runner.js
+   * silently did nothing, causing memory/audio leaks.
+   *
+   * @param {string}   id  - app ID
+   * @param {Function} fn  - called with no arguments on WM.close()
+   */
+  setOnClose(id, fn) {
+    if (this.registry[id]) {
+      this._onCloseFns[id] = fn;
+    } else {
+      this._pendingOnClose = this._pendingOnClose || {};
+      this._pendingOnClose[id] = fn;
+    }
+  },
+
+  /* ─── Dock sync ─── */
   _syncDockHide() {
     const hasVisible = Object.values(this.registry).some(w => w.open && !w.minimized);
     KOSBus.dispatch('kos:windows-visible-changed', { hasVisible });
   },
 
-  /* ─────────────────────────────────────────────────────────────
-     DRAG  +  WINDOW SNAPPING
-     ─────────────────────────────────────────────────────────────
-     Snap zones (detected from live cursor position):
-       TOP   — cursor Y ≤ TOPBAR_H + 8 px   → fullscreen (maximize)
-       LEFT  — cursor X ≤ 12 px             → left  50 % of screen
-       RIGHT — cursor X ≥ vw − 12 px        → right 50 % of screen
-
-     While in a zone the snap ghost overlay is shown.
-     On mouseup inside a zone the window is snapped.
-     Grabbing a snapped window's titlebar instantly un-snaps it
-     and re-anchors the drag so the cursor feels natural.
-     ───────────────────────────────────────────────────────────── */
+  /* ═══════════════════════════════════════════════════════════
+     DRAG + WINDOW SNAPPING
+  ═══════════════════════════════════════════════════════════ */
   _makeDraggable(id) {
     const w = this.registry[id];
     if (!w) return;
@@ -646,10 +591,10 @@ const WM = {
     if (!handle) return;
 
     let sx, sy, sl, st, dragging = false;
-    let activeZone = null;   // null | 'top' | 'left' | 'right'
-    let _dragRaf   = null;   // rAF handle — at most one paint per frame
-    let _lastDragE = null;   // freshest mousemove event, consumed inside rAF
-    let _cachedW   = 0;      // offsetWidth read ONCE on mousedown, not per-move
+    let activeZone = null;
+    let _dragRaf   = null;
+    let _lastDragE = null;
+    let _cachedW   = 0;
 
     const SNAP_TOP_PX  = this.TOPBAR_H + 8;
     const SNAP_EDGE_PX = 12;
@@ -659,12 +604,8 @@ const WM = {
           e.target.closest('.br-newtab-btn') || e.target.closest('.br-tab-x')) return;
       if (w.maximized) return;
 
-      /* ── Un-snap on grab ──
-         Restore original window geometry, then re-anchor the drag
-         origin so the cursor feels naturally connected to the window. */
       if (w.snapped) {
         this._unsnapWindow(id);
-        /* After restoring, anchor drag from the now-restored position */
         sl = parseInt(w.el.style.left) || 0;
         st = parseInt(w.el.style.top)  || 0;
         sx = e.clientX;
@@ -675,13 +616,9 @@ const WM = {
         st = parseInt(w.el.style.top)  || 0;
       }
 
-      /* Read offsetWidth ONCE here — never inside the hot mousemove loop */
       _cachedW = w.el.offsetWidth;
-
-      /* Promote window to its own GPU layer; strip CSS transitions for zero-lag drag */
       w.el.style.willChange = 'left, top';
       w.el.classList.add('win-dragging');
-
       dragging = true;
       this.focus(id);
       e.preventDefault();
@@ -689,12 +626,11 @@ const WM = {
 
     document.addEventListener('mousemove', e => {
       if (!dragging) return;
-      _lastDragE = e;           // always store the freshest event
-      if (_dragRaf) return;     // a frame is already queued — skip
+      _lastDragE = e;
+      if (_dragRaf) return;
       _dragRaf = requestAnimationFrame(() => {
         _dragRaf = null;
         const ev = _lastDragE;
-
         let nl = sl + ev.clientX - sx;
         let nt = st + ev.clientY - sy;
         nt = Math.max(this.TOPBAR_H, Math.min(nt, window.innerHeight - 60));
@@ -702,12 +638,10 @@ const WM = {
         w.el.style.left = nl + 'px';
         w.el.style.top  = nt + 'px';
 
-        /* ── Detect snap zone from live cursor position ── */
-        const cx = ev.clientX;
-        const cy = ev.clientY;
+        const cx = ev.clientX, cy = ev.clientY;
         let zone = null;
-        if      (cy <= SNAP_TOP_PX)                       zone = 'top';
-        else if (cx <= SNAP_EDGE_PX)                      zone = 'left';
+        if      (cy <= SNAP_TOP_PX)                      zone = 'top';
+        else if (cx <= SNAP_EDGE_PX)                     zone = 'left';
         else if (cx >= window.innerWidth - SNAP_EDGE_PX) zone = 'right';
 
         if (zone !== activeZone) {
@@ -720,12 +654,9 @@ const WM = {
     document.addEventListener('mouseup', () => {
       if (!dragging) return;
       dragging = false;
-
-      /* Cancel any pending frame and remove GPU + no-transition hints */
       if (_dragRaf) { cancelAnimationFrame(_dragRaf); _dragRaf = null; }
       w.el.style.willChange = '';
       w.el.classList.remove('win-dragging');
-
       this._hideSnapGhost();
       if (activeZone) {
         this._snapWindow(id, activeZone);
@@ -736,81 +667,49 @@ const WM = {
     });
   },
 
-  /* ─────────────────────────────────────────────────────────────
-     SNAP — apply a snap zone to a window
-     ───────────────────────────────────────────────────────────── */
+  /* ─── Snap ─── */
   _snapWindow(id, zone) {
     const w = this.registry[id];
     if (!w) return;
+    if (zone === 'top') { this.maximize(id); return; }
 
-    /* Top snap → delegate to existing maximize() */
-    if (zone === 'top') {
-      this.maximize(id);
-      return;
-    }
-
-    /* Save pre-snap geometry so we can restore on un-snap / drag */
     w.savedRect = {
-      left:   w.el.style.left,
-      top:    w.el.style.top,
-      width:  w.el.style.width,
-      height: w.el.style.height,
+      left: w.el.style.left, top: w.el.style.top,
+      width: w.el.style.width, height: w.el.style.height,
     };
 
     const tb = this.TOPBAR_H;
     w.el.classList.add('win-animating');
 
     if (zone === 'left') {
-      Object.assign(w.el.style, {
-        left: '0px',         top:    tb + 'px',
-        width: '50vw',       height: `calc(100vh - ${tb}px)`,
-      });
+      Object.assign(w.el.style, { left:'0px', top: tb+'px', width:'50vw', height:`calc(100vh - ${tb}px)` });
       w.el.classList.add('win-snapped-left');
       w.el.classList.remove('win-snapped-right');
     } else {
-      /* right */
-      Object.assign(w.el.style, {
-        left: '50vw',        top:    tb + 'px',
-        width: '50vw',       height: `calc(100vh - ${tb}px)`,
-      });
+      Object.assign(w.el.style, { left:'50vw', top: tb+'px', width:'50vw', height:`calc(100vh - ${tb}px)` });
       w.el.classList.add('win-snapped-right');
       w.el.classList.remove('win-snapped-left');
     }
 
     w.snapped = zone;
     setTimeout(() => w.el.classList.remove('win-animating'), 440);
-
-    /* Inject floating topbar controls on the matching edge slightly after
-       geometry starts animating, so button fade-in feels sequenced */
     setTimeout(() => this._injectSnapControls(id, zone), 80);
-
     this._scheduleSave();
   },
 
-  /* ─────────────────────────────────────────────────────────────
-     UN-SNAP — restore window to its pre-snap geometry
-     ───────────────────────────────────────────────────────────── */
   _unsnapWindow(id) {
     const w = this.registry[id];
     if (!w || !w.snapped) return;
-
-    /* Clear topbar snap controls for this edge before un-snapping */
     this._clearSnapControls(id);
-
     w.el.classList.remove('win-snapped-left', 'win-snapped-right');
     w.snapped = null;
-
     if (w.savedRect) {
       const r = w.savedRect;
-      Object.assign(w.el.style, {
-        left: r.left, top: r.top, width: r.width, height: r.height,
-      });
+      Object.assign(w.el.style, { left:r.left, top:r.top, width:r.width, height:r.height });
     }
   },
 
-  /* ─────────────────────────────────────────────────────────────
-     SNAP GHOST — translucent preview overlay shown during drag
-     ───────────────────────────────────────────────────────────── */
+  /* ─── Snap ghost ─── */
   _showSnapGhost(zone) {
     let ghost = document.getElementById('kos-snap-ghost');
     if (!ghost) {
@@ -820,28 +719,17 @@ const WM = {
     }
 
     const tb = this.TOPBAR_H;
-    const vw = window.innerWidth;
-
-    /* Reset inline geometry */
-    Object.assign(ghost.style, {
-      top: tb + 'px', bottom: '0', left: '', right: '', width: '',
-    });
+    Object.assign(ghost.style, { top: tb+'px', bottom:'0', left:'', right:'', width:'' });
 
     if (zone === 'top') {
-      Object.assign(ghost.style, { left: '0', right: '0' });
+      Object.assign(ghost.style, { left:'0', right:'0' });
     } else if (zone === 'left') {
-      Object.assign(ghost.style, { left: '0', width: '50vw' });
+      Object.assign(ghost.style, { left:'0', width:'50vw' });
     } else {
-      /* right */
-      Object.assign(ghost.style, { left: '50vw', right: '0' });
+      Object.assign(ghost.style, { left:'50vw', right:'0' });
     }
 
     ghost.dataset.zone = zone;
-
-    /* Trigger entrance animation without forcing a synchronous reflow.
-       void offsetWidth is a known perf anti-pattern — it causes a full
-       style+layout flush. Use the rAF double-frame trick instead:
-       rAF1 ensures the classList.remove is painted, rAF2 adds visible. */
     ghost.classList.remove('kos-snap-ghost--visible');
     requestAnimationFrame(() => {
       requestAnimationFrame(() => ghost.classList.add('kos-snap-ghost--visible'));
@@ -853,9 +741,9 @@ const WM = {
     if (ghost) ghost.classList.remove('kos-snap-ghost--visible');
   },
 
-  /* ─────────────────────────────────────────────────────────────
+  /* ═══════════════════════════════════════════════════════════
      RESIZE — 8-directional handles
-     ───────────────────────────────────────────────────────────── */
+  ═══════════════════════════════════════════════════════════ */
   _makeResizable(id) {
     const w = this.registry[id];
     if (!w) return;
@@ -865,7 +753,7 @@ const WM = {
         if (w.maximized) return;
         e.preventDefault(); e.stopPropagation();
 
-        const dir = handle.dataset.dir;
+        const dir    = handle.dataset.dir;
         const startX = e.clientX, startY = e.clientY;
         const startL = parseInt(w.el.style.left)   || 0;
         const startT = parseInt(w.el.style.top)    || 0;
@@ -873,13 +761,11 @@ const WM = {
         const startH = w.el.offsetHeight;
         this.focus(id);
 
-        /* Promote to GPU layer; strip transitions for zero-lag resize */
         w.el.style.willChange = 'left, top, width, height';
         w.el.classList.add('win-resizing');
 
         const onMove = (() => {
-          let _resizeRaf  = null;
-          let _lastResize = null;
+          let _resizeRaf = null, _lastResize = null;
           return e => {
             _lastResize = e;
             if (_resizeRaf) return;
@@ -894,13 +780,11 @@ const WM = {
               if (dir.includes('s')) nh = Math.max(this.MIN_H, startH + dy);
               if (dir.includes('w')) {
                 const cw = Math.max(this.MIN_W, startW - dx);
-                nl = startL + (startW - cw);
-                nw = cw;
+                nl = startL + (startW - cw); nw = cw;
               }
               if (dir.includes('n')) {
                 const ch = Math.max(this.MIN_H, startH - dy);
-                nt = Math.max(this.TOPBAR_H, startT + (startH - ch));
-                nh = ch;
+                nt = Math.max(this.TOPBAR_H, startT + (startH - ch)); nh = ch;
               }
 
               w.el.style.left   = nl + 'px';
@@ -925,11 +809,10 @@ const WM = {
     });
   },
 
-  /* ─────────────────────────────────────────────────────────────
-     STUDIO HELPERS — used by studio.js to dynamically publish apps
-     ───────────────────────────────────────────────────────────── */
+  /* ═══════════════════════════════════════════════════════════
+     STUDIO HELPERS
+  ═══════════════════════════════════════════════════════════ */
   registerDynamicApp(appDef) {
-    /* appDef shape: { id, name, iconClass, faIcon, initData } */
     const desktop = document.getElementById('screen-desktop');
     if (!document.getElementById('win-' + appDef.id)) {
       const el = this._buildWindowDOM(appDef);
@@ -943,6 +826,7 @@ const WM = {
     const winEl = document.getElementById('win-' + id);
     if (winEl) winEl.remove();
     delete this.registry[id];
+    delete this._onCloseFns[id];
   },
 };
 

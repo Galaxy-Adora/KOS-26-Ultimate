@@ -36,6 +36,7 @@
   <link rel="stylesheet" href="css/core-vars.css">
   <link rel="stylesheet" href="css/shell.css">
   <link rel="stylesheet" href="css/wm.css">
+<link rel="stylesheet" herf="css/kos-setup.css"> 
 
   <!-- ══ MOBILE BLOCKER STYLES ══ -->
   <style>
@@ -376,19 +377,29 @@
 
   </div><!-- end #kos-qs-panel -->
 
-  <!-- ══ NOTIFICATION PANEL ══ -->
+   <!-- ══ NOTIFICATION PANEL ══ -->
   <div id="kos-notif-panel" class="kos-panel">
     <div class="kn-date-row">
       <div class="kn-weekday" id="kn-weekday"></div>
       <div class="kn-datestr"  id="kn-datestr"></div>
     </div>
     <div class="panel-sep"></div>
-    <div class="kn-section-title">Notifications</div>
-    <div class="kn-empty">
-      <i class="fa-solid fa-bell-slash"></i>
-      <p>No new notifications</p>
+    <div class="kn-section-hdr">
+      <span class="kn-section-title">Notifications</span>
+      <button class="kn-clear-btn" id="kn-clear-btn"
+              onclick="KOSNDB.clearAll()" style="display:none">
+        Clear All
+      </button>
+    </div>
+    <!-- KOSNDB dynamically manages everything inside this list -->
+    <div id="kn-notif-list">
+      <div class="kn-empty" id="kn-empty-state">
+        <i class="fa-solid fa-bell-slash"></i>
+        <p>No new notifications</p>
+      </div>
     </div>
   </div>
+ 
 
   <!-- Hidden file inputs -->
   <input type="file" id="wallpaperFileInput" accept="image/*" style="display:none"
@@ -466,7 +477,7 @@
     function toggleNotifPanel() {
       const notifEl = document.getElementById('kos-notif-panel');
       if (!notifEl) return;
-
+ 
       if (_notifOpen) {
         notifEl.classList.remove('panel-open');
         document.getElementById('notif-btn').classList.remove('active');
@@ -482,7 +493,7 @@
         const ds = document.getElementById('kn-datestr');
         if (wd) wd.textContent = DAYS[now.getDay()];
         if (ds) ds.textContent = MONTHS[now.getMonth()] + ' ' + now.getDate();
-
+ 
         _positionNotif(_qsOpen);
         notifEl.classList.add('panel-open');
         document.getElementById('notif-btn').classList.add('active');
@@ -490,7 +501,7 @@
         _backdrop(true);
       }
     }
-
+ 
     /* Position notif panel: directly below QS if QS is open, else at base top */
     function _positionNotif(belowQs) {
       const notifEl = document.getElementById('kos-notif-panel');
@@ -503,7 +514,6 @@
         notifEl.style.top = _PANEL_TOP + 'px';
       }
     }
-
     /* ── Tile state sync ── */
     function qsTileSyncState() {
       const isDark  = document.body.classList.contains('dark');
@@ -553,41 +563,31 @@
       else        { sl.value = 0;        qsSetVolume(0);         }
     }
 
-    /* ── Brightness ──
-       Primary: KOSDisplay.setBrightness(0–1)  (same as terminal `brightness` command)
-       Fallback: CSS overlay div               (when kos-display.js not yet loaded)   */
-    function qsSetBrightness(val) {
-      const v = parseInt(val, 10);
-      // Update slider fill CSS var
-      const sl = document.getElementById('qs-bright-slider');
-      if (sl) sl.style.setProperty('--qs-fill', v + '%');
-      document.getElementById('qs-bright-val').textContent = v;
-      // Route through KOSDisplay first (mirrors terminal `brightness` command)
-      if (window.KOSDisplay && typeof window.KOSDisplay.setBrightness === 'function') {
-        window.KOSDisplay.setBrightness(v / 100);
-      } else {
-        // Fallback: darken via overlay (0% bright = 88% black, 100% = transparent)
-        const opacity = (100 - v) / 100 * 0.88;
-        const overlay = document.getElementById('kos-brightness-overlay');
-        if (overlay) overlay.style.background = 'rgba(0,0,0,' + opacity.toFixed(3) + ')';
-      }
-    }
+   function qsSetBrightness(val) {
+  const v = parseInt(val, 10);
+  const sl = document.getElementById('qs-bright-slider');
+  if (sl) sl.style.setProperty('--qs-fill', v + '%');
+  document.getElementById('qs-bright-val').textContent = v;
+  /* Pass v directly — KOSDisplay.setBrightness expects 10–100, not 0–1 */
+  if (window.KOSDisplay && typeof window.KOSDisplay.setBrightness === 'function') {
+    window.KOSDisplay.setBrightness(v);
+  } else {
+    const opacity = (100 - v) / 100 * 0.88;
+    const overlay = document.getElementById('kos-brightness-overlay');
+    if (overlay) overlay.style.background = 'rgba(0,0,0,' + opacity.toFixed(3) + ')';
+  }
+}
+   function _syncBrightness() {
+  if (!window.KOSDisplay) return;
+  const pct = KOSDisplay.get.brightness();   /* returns 10–100 */
+  if (isNaN(pct)) return;
+  const sl = document.getElementById('qs-bright-slider');
+  if (sl) { sl.value = pct; sl.style.setProperty('--qs-fill', pct + '%'); }
+  const vl = document.getElementById('qs-bright-val');
+  if (vl) vl.textContent = pct;
+}
 
-    /* Sync brightness slider to current KOSDisplay state when QS opens */
-    function _syncBrightness() {
-      if (!window.KOSDisplay) return;
-      // KOSDisplay stores brightness in localStorage key 'kos-brightness'
-      const stored = parseFloat(localStorage.getItem('kos-brightness'));
-      if (!isNaN(stored)) {
-        const pct = Math.round(stored * 100);
-        const sl  = document.getElementById('qs-bright-slider');
-        if (sl) { sl.value = pct; sl.style.setProperty('--qs-fill', pct + '%'); }
-        const vl = document.getElementById('qs-bright-val');
-        if (vl) vl.textContent = pct;
-      }
-    }
-
-    /* ── Per-app Volume Mixer ── */
+/* ── Per-app Volume Mixer ── */
     function qsToggleMixer() {
       _mixerOpen = !_mixerOpen;
       const panel = document.getElementById('qs-mixer-panel');
@@ -715,8 +715,10 @@
   <script defer src="terminal.js"></script>
 
   <!-- Boot orchestrator — must be last -->
+   <link rel="stylesheet" href="css/kos-setup.css">
+   <script defer src="kos-setup.js"></script>
   <script defer src="kos-display.js"></script>
   <script defer src="kos-init.js"></script>
-
+    
 </body>
 </html>

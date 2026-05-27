@@ -11,8 +11,21 @@
     const KEY_NO_PASSWORD = 'kos-no-password';
     const DEFAULT_PASS    = 'kosul';
 
+    /* ── Password helpers ──────────────────────────────────────────
+       KOS has two password localStorage keys:
+         'kos-password'       — written by the terminal's passwd command
+         'kos_login_password' — written by Settings app and the OOBE setup
+       Verification must accept input matching EITHER stored key so that
+       purge (and passwd) work regardless of which path the user used to
+       set their password. The hardcoded default 'kosul' is only used when
+       no custom password exists at all.
+       ──────────────────────────────────────────────────────────────── */
+    const KEY_SETTINGS_PW = 'kos_login_password';   // ui-manager / kos-setup.js
+
     function _getPass() {
-        return localStorage.getItem(KEY_PASSWORD) || DEFAULT_PASS;
+        return localStorage.getItem(KEY_PASSWORD)
+            || localStorage.getItem(KEY_SETTINGS_PW)
+            || DEFAULT_PASS;
     }
 
     function _isNoPass() {
@@ -20,7 +33,13 @@
     }
 
     function _verifyPass(input) {
-        return input === _getPass();
+        const termPw = localStorage.getItem(KEY_PASSWORD);
+        const setPw  = localStorage.getItem(KEY_SETTINGS_PW);
+        // Accept against whichever key(s) are populated, or the fallback default.
+        if (termPw && input === termPw) return true;
+        if (setPw  && input === setPw)  return true;
+        if (!termPw && !setPw && input === DEFAULT_PASS) return true;
+        return false;
     }
 
     const RootTerminal = {
@@ -452,6 +471,97 @@
                 }
             },
 
+            /* ── USERNAME COMMAND ─────────────────────────────────
+               Reads / writes the display username in IndexedDB.
+               The KOSUser global is provided by kos-setup.js.
+               If kos-setup.js is not loaded, falls back to direct IDB.
+               ─────────────────────────────────────────────────────── */
+            'username': {
+                description: 'Manage display username  (status | set <name>)',
+                execute: async (args) => {
+                    const sub = (args[0] ?? '').toLowerCase();
+
+                    /* ── Inline IDB helpers (work even without kos-setup.js) ── */
+                    const _openUserDB = () => new Promise((res, rej) => {
+                        const req = indexedDB.open('kos-userdata', 1);
+                        req.onupgradeneeded = e => {
+                            if (!e.target.result.objectStoreNames.contains('settings'))
+                                e.target.result.createObjectStore('settings');
+                        };
+                        req.onsuccess = e => res(e.target.result);
+                        req.onerror   = e => rej(e.target.error);
+                    });
+
+                    const _readUser = async () => {
+                        const db  = await _openUserDB();
+                        return new Promise(res => {
+                            const req = db.transaction('settings','readonly')
+                                          .objectStore('settings').get('username');
+                            req.onsuccess = e => { db.close(); res(e.target.result || 'Developer'); };
+                            req.onerror   = ()  => { db.close(); res('Developer'); };
+                        });
+                    };
+
+                    const _writeUser = async name => {
+                        const db  = await _openUserDB();
+                        return new Promise((res, rej) => {
+                            const req = db.transaction('settings','readwrite')
+                                          .objectStore('settings').put(name, 'username');
+                            req.onsuccess = () => { db.close(); res(); };
+                            req.onerror   = e  => { db.close(); rej(e.target.error); };
+                        });
+                    };
+
+                    /* ── status / bare call ── */
+                    if (!sub || sub === 'status') {
+                        const current = await _readUser();
+                        return [
+                            '  ┌─ USERNAME STATUS ────────────────────────────────┐',
+                            `  │  Current username : ${current}`,
+                            '  │  Stored in       : IndexedDB  kos-userdata',
+                            '  │',
+                            '  │  Usage: username set <your-name>',
+                            '  └──────────────────────────────────────────────────┘',
+                        ];
+                    }
+
+                    /* ── set ── */
+                    if (sub === 'set') {
+                        const newName = args.slice(1).join(' ').trim();
+                        if (!newName)
+                            return 'Usage: username set <your-name>';
+                        if (newName.length < 2)
+                            return '✗  Username must be at least 2 characters.';
+                        if (newName.length > 30)
+                            return '✗  Username must be 30 characters or fewer.';
+                        if (!/^[a-zA-Z0-9 _.‑-]+$/.test(newName))
+                            return '✗  Only letters, numbers, spaces, hyphens, dots and underscores allowed.';
+
+                        try {
+                            /* Prefer KOSUser (from kos-setup.js) — updates DOM automatically */
+                            if (window.KOSUser && typeof KOSUser.setUsername === 'function') {
+                                await KOSUser.setUsername(newName);
+                            } else {
+                                await _writeUser(newName);
+                                /* Manual DOM update as fallback */
+                                document.querySelectorAll('.login-username')
+                                        .forEach(el => { el.textContent = newName; });
+                                document.querySelectorAll('[data-kos-username]')
+                                        .forEach(el => { el.textContent = newName; });
+                            }
+                            return [
+                                `  ✓  Username updated to "${newName}"`,
+                                '     Change is visible on the login screen immediately.',
+                            ];
+                        } catch (err) {
+                            return `  ✗  Failed to save username: ${err.message}`;
+                        }
+                    }
+
+                    return '  Usage: username  |  username status  |  username set <name>';
+                }
+            },
+
             'wallpaper': {
                 description: 'Control the desktop wallpaper  (reset | list | set <name>)',
                 execute: (args) => {
@@ -520,86 +630,221 @@
             },
 
             'purge': {
-                description: 'Securely erase KOSFS storage — IRREVERSIBLE  (requires password)',
+                description: 'Erase KOSFS storage or factory-reset KOS  (--all | --photos | --videos | --audios | --documents)',
                 execute: async (args, outputEl) => {
                     const flag = args[0]?.toLowerCase();
 
+                    /* ── Usage ── */
                     const VALID_FLAGS = ['--all', '--photos', '--videos', '--audios', '--documents'];
                     if (!flag || !VALID_FLAGS.includes(flag)) {
                         return [
-                            'Usage:',
-                            '  purge --all         erase everything',
-                            '  purge --photos      erase images',
-                            '  purge --videos      erase videos',
-                            '  purge --audios      erase audio files',
-                            '  purge --documents   erase documents',
+                            '  Usage:',
+                            '  ┌───────────────────────────────────────────────────────────┐',
+                            '  │  purge --all         FACTORY RESET — wipes everything     │',
+                            '  │                      and returns to first-boot setup       │',
+                            '  │  purge --photos      erase all image files                │',
+                            '  │  purge --videos      erase all video files                │',
+                            '  │  purge --audios      erase all audio files                │',
+                            '  │  purge --documents   erase all document files             │',
+                            '  └───────────────────────────────────────────────────────────┘',
                             '',
-                            '⚠  This operation is IRREVERSIBLE and requires your password.',
+                            '  ⚠  All operations are IRREVERSIBLE and require your password.',
                         ];
                     }
 
                     if (!window.KOSFS) {
-                        return 'KOSFS kernel module is unreachable. Purge aborted.';
+                        return '✗  KOSFS kernel module is unreachable. Purge aborted.';
                     }
 
+                    /* ═══════════════════════════════════════════════════════════
+                       FACTORY RESET  (--all)
+                       Three-step confirmation: warning → type RESET → password
+                       ═══════════════════════════════════════════════════════════ */
+                    if (flag === '--all') {
+
+                        RootTerminal.logLine('', '');
+                        RootTerminal.logLine('  ╔══════════════════════════════════════════════════════╗', 'error-msg');
+                        RootTerminal.logLine('  ║           ⚠  FACTORY RESET WARNING  ⚠               ║', 'error-msg');
+                        RootTerminal.logLine('  ╠══════════════════════════════════════════════════════╣', 'error-msg');
+                        RootTerminal.logLine('  ║  This will PERMANENTLY erase:                        ║', 'error-msg');
+                        RootTerminal.logLine('  ║    • All files in KOSFS (photos, videos, docs…)      ║', 'error-msg');
+                        RootTerminal.logLine('  ║    • Your username, password and login settings      ║', 'error-msg');
+                        RootTerminal.logLine('  ║    • All appearance preferences (theme, wallpaper…)  ║', 'error-msg');
+                        RootTerminal.logLine('  ║    • All app data stored in localStorage             ║', 'error-msg');
+                        RootTerminal.logLine('  ║                                                      ║', 'error-msg');
+                        RootTerminal.logLine('  ║  KOS will reload and show the first-boot setup       ║', 'error-msg');
+                        RootTerminal.logLine('  ║  screen exactly as if installed fresh.               ║', 'error-msg');
+                        RootTerminal.logLine('  ║                                                      ║', 'error-msg');
+                        RootTerminal.logLine('  ║  THIS CANNOT BE UNDONE.                              ║', 'error-msg');
+                        RootTerminal.logLine('  ╚══════════════════════════════════════════════════════╝', 'error-msg');
+                        RootTerminal.logLine('', '');
+                        RootTerminal.logLine('  Step 1 of 2 — Type  RESET  to confirm, or anything else to cancel:', 'system-msg');
+
+                        RootTerminal._startInteractive({
+                            maskInput : false,
+                            prompt    : '[type RESET to confirm]',
+                            onInput   : async (confirmWord) => {
+
+                                /* ── Step 1: must type RESET exactly ── */
+                                if (confirmWord.trim() !== 'RESET') {
+                                    RootTerminal.logLine('  Cancelled — factory reset aborted.', 'system-msg');
+                                    RootTerminal._stopInteractive();
+                                    return;
+                                }
+
+                                RootTerminal.logLine('  Step 2 of 2 — Enter your KOS password to authorise:', 'system-msg');
+
+                                /* ── Step 2: password ── */
+                                RootTerminal._startInteractive({
+                                    maskInput : true,
+                                    prompt    : '[password]',
+                                    onInput   : async (pw) => {
+                                        if (!_verifyPass(pw)) {
+                                            RootTerminal.logLine('  ✗  Incorrect password. Factory reset aborted.', 'error-msg');
+                                            RootTerminal._stopInteractive();
+                                            return;
+                                        }
+
+                                        RootTerminal._stopInteractive();
+                                        RootTerminal.logLine('', '');
+                                        RootTerminal.logLine('  ✓  Authorised. Beginning factory reset…', 'system-msg');
+
+                                        /* ── 1. Wipe KOSFS files ── */
+                                        try {
+                                            KOSFS.registerApp('terminal', ['*']);
+                                            await KOSFS.ready;
+                                            const files = await KOSFS.list('terminal', {});
+                                            let del = 0;
+                                            for (const f of files) {
+                                                try { await KOSFS.delete('terminal', f.id); del++; }
+                                                catch (_) {}
+                                            }
+                                            RootTerminal.logLine(`  ⚙  KOSFS: ${del} file${del !== 1 ? 's' : ''} erased.`, 'system-msg');
+                                        } catch (e) {
+                                            RootTerminal.logLine(`  ⚠  KOSFS wipe partial: ${e.message}`, 'error-msg');
+                                        }
+
+                                        /* ── 2. Wipe kos-userdata IDB (username store) ── */
+                                        await new Promise(res => {
+                                            try {
+                                                const req = indexedDB.deleteDatabase('kos-userdata');
+                                                req.onsuccess = res;
+                                                req.onerror   = res;
+                                                req.onblocked = res;
+                                            } catch (_) { res(); }
+                                        });
+                                        RootTerminal.logLine('  ⚙  kos-userdata: cleared.', 'system-msg');
+
+                                        /* ── 3. Wipe KOS localStorage keys ── */
+                                        const KOS_LS_KEYS = [
+                                            'kos-theme', 'kos-glass', 'kos-wallpaper',
+                                            'kos-avatar', 'kos-icon-palette',
+                                            'kos-password', 'kos_login_password',
+                                            'kos-no-password',
+                                            'kos_setup_complete',
+                                            'kos_first_boot_complete',
+                                            'kos-fs-v1-migrated',
+                                            'kos-display-zoom', 'kos-display-text',
+                                            'kos-display-bold', 'kos-display-brightness',
+                                            'kos-studio-apps', 'kos-session',
+                                            'kos-wallpaper-custom',
+                                        ];
+                                        let lsCleared = 0;
+                                        for (const k of KOS_LS_KEYS) {
+                                            if (localStorage.getItem(k) !== null) {
+                                                localStorage.removeItem(k);
+                                                lsCleared++;
+                                            }
+                                        }
+                                        /* Also sweep any remaining kos- prefixed keys */
+                                        const extra = Object.keys(localStorage)
+                                            .filter(k => k.startsWith('kos'));
+                                        for (const k of extra) {
+                                            localStorage.removeItem(k);
+                                            lsCleared++;
+                                        }
+                                        RootTerminal.logLine(`  ⚙  localStorage: ${lsCleared} key${lsCleared !== 1 ? 's' : ''} removed.`, 'system-msg');
+
+                                        /* ── 4. Dispatch so live modules can clean up ── */
+                                        KOSBus?.dispatch('kos:factory-reset', { initiatedBy: 'terminal' });
+
+                                        /* ── 5. Countdown and reload ── */
+                                        RootTerminal.logLine('', '');
+                                        RootTerminal.logLine('  ✓  Factory reset complete.', 'system-msg');
+                                        RootTerminal.logLine('  ↻  Reloading in 3…', 'system-msg');
+
+                                        let t = 2;
+                                        const tick = setInterval(() => {
+                                            RootTerminal.logLine(`  ↻  Reloading in ${t}…`, 'system-msg');
+                                            if (t-- <= 0) {
+                                                clearInterval(tick);
+                                                location.reload();
+                                            }
+                                        }, 1000);
+                                    }
+                                });
+                            }
+                        });
+
+                        return null;
+                    }
+
+                    /* ═══════════════════════════════════════════════════════════
+                       PARTIAL FILE PURGE  (--photos | --videos | --audios | --documents)
+                       Single-step: password only.
+                       ═══════════════════════════════════════════════════════════ */
                     const flagTypeMap = {
-                        '--photos'   : 'image',
-                        '--videos'   : 'video',
-                        '--audios'   : 'audio',
-                        '--documents': 'document',
-                        '--all'      : null,
+                        '--photos'   : KOSFS.TYPES?.IMAGE    || 'image',
+                        '--videos'   : KOSFS.TYPES?.VIDEO    || 'video',
+                        '--audios'   : KOSFS.TYPES?.AUDIO    || 'audio',
+                        '--documents': KOSFS.TYPES?.DOCUMENT || 'document',
                     };
                     const targetType = flagTypeMap[flag];
-                    const label = flag === '--all' ? 'ALL FILES' : flag.replace('--', '').toUpperCase();
+                    const label      = flag.replace('--', '').toUpperCase();
 
-                    RootTerminal.logLine(`⚠  You are about to permanently erase: ${label}`, 'error-msg');
-                    RootTerminal.logLine('   This cannot be undone. Enter your password to confirm:', 'system-msg');
+                    RootTerminal.logLine(`  ⚠  About to permanently erase all ${label}. This cannot be undone.`, 'error-msg');
+                    RootTerminal.logLine('     Enter your password to confirm:', 'system-msg');
 
                     RootTerminal._startInteractive({
                         maskInput : true,
-                        prompt    : '[password to confirm purge]',
-                        onInput   : async (val) => {
-                            if (!_verifyPass(val)) {
-                                RootTerminal.logLine('✗  Incorrect password. Purge aborted.', 'error-msg');
+                        prompt    : '[password to confirm]',
+                        onInput   : async (pw) => {
+                            if (!_verifyPass(pw)) {
+                                RootTerminal.logLine('  ✗  Incorrect password. Purge aborted.', 'error-msg');
                                 RootTerminal._stopInteractive();
                                 return;
                             }
 
                             RootTerminal._stopInteractive();
-                            RootTerminal.logLine('⚙  Purge authorised. Beginning erasure…', 'system-msg');
+                            RootTerminal.logLine(`  ⚙  Erasing ${label}…`, 'system-msg');
 
                             try {
                                 KOSFS.registerApp('terminal', ['*']);
                                 await KOSFS.ready;
 
-                                const filter = targetType ? { type: targetType } : {};
-                                const files  = await KOSFS.list('terminal', filter);
+                                const files = await KOSFS.list('terminal', { type: targetType });
 
                                 if (files.length === 0) {
-                                    RootTerminal.logLine('  Nothing to erase — storage was already empty.', 'system-msg');
+                                    RootTerminal.logLine(`  ✓  Nothing to erase — no ${label} found in storage.`, 'system-msg');
                                     return;
                                 }
 
                                 let deleted = 0, failed = 0;
                                 for (const file of files) {
-                                    try {
-                                        await KOSFS.delete('terminal', file.id);
-                                        deleted++;
-                                    } catch {
-                                        failed++;
-                                    }
+                                    try   { await KOSFS.delete('terminal', file.id); deleted++; }
+                                    catch { failed++; }
                                 }
 
                                 RootTerminal.logLine(
-                                    `✓  Purge complete: ${deleted} file${deleted !== 1 ? 's' : ''} erased` +
-                                    (failed ? `, ${failed} could not be removed.` : '.'),
+                                    `  ✓  Purge complete: ${deleted} ${label.toLowerCase()} file${deleted !== 1 ? 's' : ''} erased` +
+                                    (failed ? ` (${failed} could not be removed).` : '.'),
                                     'system-msg'
                                 );
 
-                                KOSBus?.dispatch('kos:fs-delete', { deletedBy: 'terminal', bulk: true });
+                                KOSBus?.dispatch('kos:fs-delete', { deletedBy: 'terminal', bulk: true, type: targetType });
 
                             } catch (err) {
-                                RootTerminal.logLine(`  Purge error: ${err.message}`, 'error-msg');
+                                RootTerminal.logLine(`  ✗  Purge error: ${err.message}`, 'error-msg');
                             }
                         }
                     });

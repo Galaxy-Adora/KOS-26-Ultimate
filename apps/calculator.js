@@ -1,23 +1,24 @@
-/* ═══════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
    KOS Calculator — Developer: Joel Jais
-   ═══════════════════════════════════════════════ */
+   Fix: KOSBus.listen → KOSBus.on (listen does not exist)
+   ═══════════════════════════════════════════════════════════ */
 
 WM.setOnOpen('calculator', function () {
     var C = document.getElementById('calc-body');
     if (!C) return;
 
-    /* ── system theme & glass detection ── */
     if (!document.body.classList.contains('dark') && !document.body.classList.contains('light')) {
         var dm = window.matchMedia('(prefers-color-scheme: dark)');
         function syncDark(e) { document.body.classList.toggle('dark', e.matches); }
         syncDark(dm);
         dm.addEventListener('change', syncDark);
     }
+
+    /* Fixed: was KOSBus.listen() which does not exist — correct method is KOSBus.on() */
     try {
-        if (KOSBus) KOSBus.listen('kos:glass-changed', function () { fitSize(); });
+        if (KOSBus) KOSBus.on('kos:glass-changed', function () { fitSize(); });
     } catch (_) {}
 
-    /* ── state ── */
     var mode = 'standard';
     var display = '0', first = null, waiting = false, op = null;
     var sciDisplay = '0', sciExpr = '';
@@ -26,7 +27,6 @@ WM.setOnOpen('calculator', function () {
 
     var wrapper, contentEl, screen;
 
-    /* ── per-mode target aspect ratios (width/height) ── */
     var modeRatio = {
         standard:   4 / 6.5,
         scientific: 5 / 9.2,
@@ -35,7 +35,6 @@ WM.setOnOpen('calculator', function () {
         about:      3 / 4.2
     };
 
-    /* ── unit & currency data ── */
     var units = {
         length:   { base:'m',  list:['mm','cm','m','km','in','ft','yd','mi'],
                     toBase:{mm:1e-3,cm:.01,m:1,km:1e3,in:.0254,ft:.3048,yd:.9144,mi:1609.344} },
@@ -61,7 +60,6 @@ WM.setOnOpen('calculator', function () {
     };
     var curNames = Object.keys(currencies);
 
-    /* ── helpers ── */
     function fmtNum(n) {
         var s = String(n);
         if (s.length > 11) {
@@ -136,7 +134,6 @@ WM.setOnOpen('calculator', function () {
         }
     }
 
-    /* ── simple scientific evaluator ── */
     function evalSci(expr) {
         var tokens = expr.split(/\s+/);
         var stack = [], curOp = null;
@@ -159,7 +156,6 @@ WM.setOnOpen('calculator', function () {
         return stack[0] || 0;
     }
 
-    /* ── HTML builders ── */
     function buildTabs() {
         var names = ['standard','scientific','unit','currency','about'];
         var h = '<div class="mode-tabs">';
@@ -245,14 +241,12 @@ WM.setOnOpen('calculator', function () {
             h += '  <div class="about-label">Developer</div>';
             h += '  <div class="about-value">Joel Jais</div>';
             h += '  <div class="about-label">About</div>';
-            h += '  <div class="about-value">A professional multi-mode calculator for KOS with standard, scientific, unit conversion, and currency conversion tools.</div>';
+            h += '  <div class="about-value">A professional multi-mode calculator with standard, scientific, unit conversion, and currency tools.</div>';
             h += '</div>';
         }
-
         return h;
     }
 
-    /* ── build / switch layout ── */
     function switchMode(m) {
         mode = m;
         if (wrapper) {
@@ -266,7 +260,6 @@ WM.setOnOpen('calculator', function () {
     function rebuildContent() {
         if (!contentEl) return;
         contentEl.innerHTML = buildContent(mode);
-
         screen = contentEl.querySelector('[data-screen="1"]');
 
         if (mode === 'unit') {
@@ -284,25 +277,20 @@ WM.setOnOpen('calculator', function () {
         if (mode === 'currency') updateCurOut();
         if (mode === 'standard') { display = '0'; first = null; waiting = false; op = null; }
         if (mode === 'scientific') { sciDisplay = '0'; sciExpr = ''; }
-
         fitSize();
     }
 
-    /* ── initialise ── */
     C.innerHTML = '<div class="apple-calc-wrapper">' + buildTabs() + '<div class="calc-content"></div></div>';
     wrapper = C.querySelector('.apple-calc-wrapper');
     contentEl = C.querySelector('.calc-content');
     rebuildContent();
 
-    /* ── sizing: mode-aware responsive contain ── */
     function fitSize() {
         if (!wrapper) return;
-        var pw = C.clientWidth;
-        var ph = C.clientHeight;
+        var pw = C.clientWidth, ph = C.clientHeight;
         var tr = modeRatio[mode] || 0.6;
         var pct = Math.max(0.75, Math.min(0.95, 0.95 - Math.max(0, pw - 200) / 3600));
-        var w = pw * pct;
-        var h = w / tr;
+        var w = pw * pct, h = w / tr;
         if (h > ph) { h = ph; w = h * tr; }
         wrapper.style.width = Math.floor(w) + 'px';
         wrapper.style.height = Math.floor(h) + 'px';
@@ -311,7 +299,6 @@ WM.setOnOpen('calculator', function () {
     var ro = new ResizeObserver(fitSize);
     ro.observe(C);
 
-    /* ── event dispatch ── */
     C.addEventListener('click', function (e) {
         var btn = e.target.closest('[data-cmd]');
         if (!btn) return;
@@ -329,7 +316,6 @@ WM.setOnOpen('calculator', function () {
         }
         if (mode === 'about') return;
 
-        /* standard */
         if (mode === 'standard') {
             if (cmd.indexOf('val-') === 0) {
                 var v = cmd.slice(4);
@@ -355,22 +341,18 @@ WM.setOnOpen('calculator', function () {
                 else if (op) {
                     var r = calcOp(op, first, inp);
                     if (!isFinite(r)) { display = 'Error'; if (screen) screen.textContent = 'Error'; return; }
-                    display = fmtNum(r);
-                    first = r;
+                    display = fmtNum(r); first = r;
                     if (screen) screen.textContent = display;
                 }
-                waiting = true;
-                op = ok;
-                return;
+                waiting = true; op = ok; return;
             }
             if (cmd === 'clear') {
                 var cb = contentEl.querySelector('[data-cmd="clear"]');
                 if (cb && cb.textContent === 'C') { display = '0'; cb.textContent = 'AC'; }
                 else { display = '0'; first = null; waiting = false; op = null; clearActiveOp(); }
-                if (screen) screen.textContent = display;
-                return;
+                if (screen) screen.textContent = display; return;
             }
-            if (cmd === 'negate') { display = String(parseFloat(display) * -1); if (screen) screen.textContent = fmtNum(display); return; }
+            if (cmd === 'negate')  { display = String(parseFloat(display) * -1); if (screen) screen.textContent = fmtNum(display); return; }
             if (cmd === 'percent') { display = String(parseFloat(display) / 100); if (screen) screen.textContent = fmtNum(display); return; }
             if (cmd === 'eval') {
                 if (op === null || display === 'Error') return;
@@ -387,55 +369,48 @@ WM.setOnOpen('calculator', function () {
             return;
         }
 
-        /* scientific */
         if (mode === 'scientific') {
             if (cmd.indexOf('sv-') === 0) {
                 var sv = cmd.slice(3);
                 if (sciDisplay === '0' && sv !== '.') sciDisplay = sv;
                 else if (sv === '.' && sciDisplay.indexOf('.') !== -1) return;
                 else sciDisplay += sv;
-                if (screen) screen.textContent = sciDisplay;
-                return;
+                if (screen) screen.textContent = sciDisplay; return;
             }
             if (cmd.indexOf('sop-') === 0) {
                 var sok = cmd.slice(4);
-                sciExpr += sciDisplay + ' ' + sok + ' ';
-                sciDisplay = '0';
-                if (screen) screen.textContent = sciExpr;
-                return;
+                sciExpr += sciDisplay + ' ' + sok + ' '; sciDisplay = '0';
+                if (screen) screen.textContent = sciExpr; return;
             }
-            if (cmd === 'sclear') { sciDisplay = '0'; sciExpr = ''; if (screen) screen.textContent = '0'; return; }
-            if (cmd === 'bksp') { sciDisplay = sciDisplay.slice(0,-1) || '0'; if (screen) screen.textContent = sciDisplay; return; }
-            if (cmd === 'sneg') { sciDisplay = String(parseFloat(sciDisplay)*-1); if (screen) screen.textContent = sciDisplay; return; }
+            if (cmd === 'sclear')   { sciDisplay = '0'; sciExpr = ''; if (screen) screen.textContent = '0'; return; }
+            if (cmd === 'bksp')     { sciDisplay = sciDisplay.slice(0,-1) || '0'; if (screen) screen.textContent = sciDisplay; return; }
+            if (cmd === 'sneg')     { sciDisplay = String(parseFloat(sciDisplay)*-1); if (screen) screen.textContent = sciDisplay; return; }
             if (cmd === 'spercent') { sciDisplay = String(parseFloat(sciDisplay)/100); if (screen) screen.textContent = sciDisplay; return; }
-            if (cmd === 'pi') { sciDisplay = '3.141592653589793'; if (screen) screen.textContent = 'π'; sciDisplay = '3.141592653589793'; return; }
-            if (cmd === 'euler') { sciDisplay = '2.718281828459045'; if (screen) screen.textContent = 'e'; sciDisplay = '2.718281828459045'; return; }
-            if (cmd === 'sin') { var sn = parseFloat(sciDisplay); sciDisplay = String(Math.sin(sn)); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'cos') { var cs = parseFloat(sciDisplay); sciDisplay = String(Math.cos(cs)); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'tan') { var tn = parseFloat(sciDisplay); sciDisplay = String(Math.tan(tn)); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'ln') { var lv = parseFloat(sciDisplay); sciDisplay = String(Math.log(lv)); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'log') { var lg = parseFloat(sciDisplay); sciDisplay = String(Math.log10(lg)); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'sq') { var sq = parseFloat(sciDisplay); sciDisplay = String(sq*sq); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'cube') { var cu = parseFloat(sciDisplay); sciDisplay = String(cu*cu*cu); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'pow') { sciExpr += sciDisplay + ' ^ '; sciDisplay = '0'; if (screen) screen.textContent = sciExpr; return; }
-            if (cmd === 'sqrt') { var rt = parseFloat(sciDisplay); sciDisplay = String(Math.sqrt(rt)); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
-            if (cmd === 'reci') { var rc = parseFloat(sciDisplay); sciDisplay = String(1/rc); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'pi')    { sciDisplay = '3.141592653589793'; if (screen) screen.textContent = 'π'; return; }
+            if (cmd === 'euler') { sciDisplay = '2.718281828459045'; if (screen) screen.textContent = 'e'; return; }
+            if (cmd === 'sin')   { sciDisplay = String(Math.sin(parseFloat(sciDisplay)));   if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'cos')   { sciDisplay = String(Math.cos(parseFloat(sciDisplay)));   if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'tan')   { sciDisplay = String(Math.tan(parseFloat(sciDisplay)));   if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'ln')    { sciDisplay = String(Math.log(parseFloat(sciDisplay)));   if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'log')   { sciDisplay = String(Math.log10(parseFloat(sciDisplay))); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'sq')    { var sq = parseFloat(sciDisplay); sciDisplay = String(sq*sq);     if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'cube')  { var cu = parseFloat(sciDisplay); sciDisplay = String(cu*cu*cu);  if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'pow')   { sciExpr += sciDisplay + ' ^ '; sciDisplay = '0'; if (screen) screen.textContent = sciExpr; return; }
+            if (cmd === 'sqrt')  { sciDisplay = String(Math.sqrt(parseFloat(sciDisplay))); if (screen) screen.textContent = fmtNum(sciDisplay); return; }
+            if (cmd === 'reci')  { sciDisplay = String(1/parseFloat(sciDisplay));          if (screen) screen.textContent = fmtNum(sciDisplay); return; }
             if (cmd === 'fact') {
                 var fv = parseInt(sciDisplay,10);
-                if (fv<0||fv>170) { if (screen) screen.textContent = 'Error'; return; }
+                if (fv < 0 || fv > 170) { if (screen) screen.textContent = 'Error'; return; }
                 var fr = 1;
-                for (var fi=2; fi<=fv; fi++) fr *= fi;
-                sciDisplay = String(fr);
-                if (screen) screen.textContent = fmtNum(sciDisplay);
-                return;
+                for (var fi = 2; fi <= fv; fi++) fr *= fi;
+                sciDisplay = String(fr); if (screen) screen.textContent = fmtNum(sciDisplay); return;
             }
-            if (cmd === 'paren-open') { sciExpr += sciDisplay + ' ( '; sciDisplay = '0'; if (screen) screen.textContent = sciExpr; return; }
+            if (cmd === 'paren-open')  { sciExpr += sciDisplay + ' ( '; sciDisplay = '0'; if (screen) screen.textContent = sciExpr; return; }
             if (cmd === 'paren-close') { sciExpr += sciDisplay + ' ) '; sciDisplay = '0'; if (screen) screen.textContent = sciExpr; return; }
             if (cmd === 'seval') {
                 try {
                     var sr = evalSci(sciExpr + ' ' + sciDisplay);
-                    sciDisplay = String(sr);
-                    sciExpr = '';
+                    sciDisplay = String(sr); sciExpr = '';
                     if (screen) screen.textContent = fmtNum(sciDisplay);
                 } catch (err) {
                     if (screen) screen.textContent = 'Error';
@@ -447,29 +422,25 @@ WM.setOnOpen('calculator', function () {
         }
     });
 
-    /* ── input events ── */
     C.addEventListener('input', function (e) {
-        var t = e.target;
-        var cmd = t.getAttribute('data-cmd');
+        var t = e.target, cmd = t.getAttribute('data-cmd');
         if (!cmd) return;
-        if (mode === 'unit' && cmd === 'uval') { unitVal = t.value; updateUnitOut(); }
-        if (mode === 'currency' && cmd === 'cval') { curVal = t.value; updateCurOut(); }
+        if (mode === 'unit' && cmd === 'uval')   { unitVal = t.value; updateUnitOut(); }
+        if (mode === 'currency' && cmd === 'cval')  { curVal = t.value; updateCurOut(); }
         if (mode === 'currency' && cmd === 'crate') { curRate = t.value; updateCurOut(); }
     });
 
-    /* ── change events ── */
     C.addEventListener('change', function (e) {
-        var t = e.target;
-        var cmd = t.getAttribute('data-cmd');
+        var t = e.target, cmd = t.getAttribute('data-cmd');
         if (!cmd) return;
         if (mode === 'unit') {
-            if (cmd === 'ucat') { unitCat = t.value; unitFrom = units[unitCat].list[0]; unitTo = units[unitCat].list[1]||units[unitCat].list[0]; rebuildContent(); }
+            if (cmd === 'ucat')  { unitCat = t.value; unitFrom = units[unitCat].list[0]; unitTo = units[unitCat].list[1]||units[unitCat].list[0]; rebuildContent(); }
             if (cmd === 'ufrom') { unitFrom = t.value; updateUnitOut(); }
-            if (cmd === 'uto') { unitTo = t.value; updateUnitOut(); }
+            if (cmd === 'uto')   { unitTo   = t.value; updateUnitOut(); }
         }
         if (mode === 'currency') {
-            if (cmd === 'cfrom') { curFrom = t.value; updateCurRate(); var ri = contentEl.querySelector('[data-cmd="crate"]'); if (ri) ri.value = curRate; updateCurOut(); }
-            if (cmd === 'cto') { curTo = t.value; updateCurRate(); var ri2 = contentEl.querySelector('[data-cmd="crate"]'); if (ri2) ri2.value = curRate; updateCurOut(); }
+            if (cmd === 'cfrom') { curFrom = t.value; updateCurRate(); var ri  = contentEl.querySelector('[data-cmd="crate"]'); if (ri)  ri.value  = curRate; updateCurOut(); }
+            if (cmd === 'cto')   { curTo   = t.value; updateCurRate(); var ri2 = contentEl.querySelector('[data-cmd="crate"]'); if (ri2) ri2.value = curRate; updateCurOut(); }
         }
     });
 });

@@ -1,0 +1,734 @@
+/* ════════════════════════════════════════════════════════════════
+   KOS ULTIMATE 2026 — css/kos-setup.css
+   First-Boot OOBE Setup Wizard — Win 11 style
+   Standalone: does NOT override shell.css or core-vars.css.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Screen wrapper ───────────────────────────────────────────── */
+#screen-setup {
+  z-index: 17;           /* above login (15), below boot (20)    */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* ── Animated gradient background ─────────────────────────────── */
+.kos-setup-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 80%,  rgba(90,  50, 200, 0.45) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 20%,  rgba(0,  90, 200, 0.40) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 70% at 50% 50%,  rgba(10,  20,  60, 0.90) 0%, transparent 100%),
+    linear-gradient(160deg, #050d1f 0%, #0a1628 40%, #0d1c3d 70%, #05090f 100%);
+  animation: kos-bg-shift 14s ease-in-out infinite alternate;
+}
+
+@keyframes kos-bg-shift {
+  0%   { filter: hue-rotate(0deg)   brightness(1);    }
+  50%  { filter: hue-rotate(8deg)   brightness(1.04); }
+  100% { filter: hue-rotate(-6deg)  brightness(0.97); }
+}
+
+/* Floating glow orbs */
+.kos-setup-bg::before,
+.kos-setup-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.22;
+  pointer-events: none;
+  animation: kos-orb-float 18s ease-in-out infinite alternate;
+}
+.kos-setup-bg::before {
+  width: 500px; height: 500px;
+  left: -100px; top: -100px;
+  background: radial-gradient(circle, #5e5ce6 0%, transparent 70%);
+}
+.kos-setup-bg::after {
+  width: 400px; height: 400px;
+  right: -80px; bottom: -80px;
+  background: radial-gradient(circle, #007aff 0%, transparent 70%);
+  animation-delay: -9s;
+}
+@keyframes kos-orb-float {
+  from { transform: translate(0, 0) scale(1);       }
+  to   { transform: translate(30px, -20px) scale(1.1); }
+}
+
+/* ── Main card ────────────────────────────────────────────────── */
+.kos-setup-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  min-height: 520px;
+  max-height: calc(100vh - 60px);
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(40px) saturate(1.6);
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255,255,255,0.06) inset,
+    0 1px 0 rgba(255,255,255,0.14) inset;
+  animation: kos-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes kos-card-in {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Light mode card adjustments */
+body:not(.dark) .kos-setup-card {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(0,0,0,0.09);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.20), 0 1px 0 rgba(255,255,255,0.9) inset;
+}
+
+/* ── Progress bar (top of card) ───────────────────────────────── */
+.kos-setup-progress {
+  flex-shrink: 0;
+  padding: 18px 28px 0;
+}
+.kos-setup-prog-track {
+  height: 3px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 99px;
+  overflow: hidden;
+}
+body:not(.dark) .kos-setup-prog-track { background: rgba(0,0,0,0.08); }
+
+.kos-setup-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #5e5ce6, #007aff);
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.kos-setup-prog-label {
+  margin-top: 7px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  text-align: right;
+  min-height: 16px;
+}
+body:not(.dark) .kos-setup-prog-label { color: rgba(0,0,0,0.32); }
+
+/* ── Scrollable body ──────────────────────────────────────────── */
+.kos-setup-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 32px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.14) transparent;
+}
+.kos-setup-body::-webkit-scrollbar { width: 5px; }
+.kos-setup-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14); border-radius: 99px;
+}
+body:not(.dark) .kos-setup-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
+
+/* Step entrance animation */
+.kos-setup-body.kos-step-in {
+  animation: kos-step-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes kos-step-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.kos-setup-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px 22px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+body:not(.dark) .kos-setup-footer { border-top-color: rgba(0,0,0,0.07); }
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.kos-setup-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 10px 22px;
+  transition: filter 0.15s, transform 0.12s, opacity 0.15s;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.kos-setup-btn:active { transform: scale(0.96); }
+.kos-setup-btn:disabled { opacity: 0.32; cursor: not-allowed; transform: none !important; }
+
+.kos-setup-btn-primary {
+  background: linear-gradient(135deg, #5e5ce6 0%, #007aff 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.30);
+}
+.kos-setup-btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
+
+.kos-setup-btn-ghost {
+  background: rgba(255,255,255,0.09);
+  color: rgba(255,255,255,0.72);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+body:not(.dark) .kos-setup-btn-ghost {
+  background: rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.62);
+  border-color: rgba(0,0,0,0.09);
+}
+.kos-setup-btn-ghost:hover { filter: brightness(1.18); }
+
+/* ════════════════════════════════════════════════════════════════
+   STEP CONTENT
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-step { display: flex; flex-direction: column; gap: 0; }
+.kos-step-center { align-items: center; text-align: center; padding-top: 12px; }
+
+/* ── Welcome / Done logo ──────────────────────────────────────── */
+.kos-setup-logo {
+  font-family: -apple-system, 'Rajdhani', sans-serif;
+  font-size: 3.6rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: rgba(255,255,255,0.97);
+  text-shadow: 0 4px 32px rgba(94, 92, 230, 0.6), 0 0 60px rgba(0,122,255,0.3);
+  margin-bottom: 20px;
+  line-height: 1;
+}
+body:not(.dark) .kos-setup-logo {
+  color: #1c1c1e;
+  text-shadow: 0 2px 16px rgba(94,92,230,0.28);
+}
+
+/* ── Typography ───────────────────────────────────────────────── */
+.kos-setup-h1 {
+  font-family: -apple-system, 'Rajdhani', sans-serif;
+  font-size: clamp(1.7rem, 4vw, 2.2rem);
+  font-weight: 300;
+  line-height: 1.25;
+  color: rgba(255,255,255,0.97);
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+body:not(.dark) .kos-setup-h1 { color: #1c1c1e; }
+
+.kos-setup-h2 {
+  font-family: -apple-system, 'Rajdhani', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.97);
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+body:not(.dark) .kos-setup-h2 { color: #1c1c1e; }
+
+.kos-setup-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.96rem;
+  color: rgba(255,255,255,0.50);
+  line-height: 1.6;
+  margin: 0 0 22px;
+  font-weight: 400;
+}
+body:not(.dark) .kos-setup-sub { color: rgba(0,0,0,0.48); }
+
+/* ── STEP 1: Terms ────────────────────────────────────────────── */
+.kos-setup-tos {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 18px 20px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-family: 'Outfit', 'Rajdhani', sans-serif;
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.62);
+  margin-bottom: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.14) transparent;
+}
+body:not(.dark) .kos-setup-tos {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.08);
+  color: rgba(0,0,0,0.60);
+}
+.kos-setup-tos::-webkit-scrollbar { width: 4px; }
+.kos-setup-tos::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 99px; }
+
+.kos-setup-tos h4 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.80rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.78);
+  margin: 14px 0 6px;
+}
+.kos-setup-tos h4:first-child { margin-top: 0; }
+body:not(.dark) .kos-setup-tos h4 { color: rgba(0,0,0,0.70); }
+
+.kos-setup-tos p { margin: 0 0 8px; }
+
+/* Custom checkbox row */
+.kos-setup-check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.78);
+  user-select: none;
+  padding: 4px 0;
+}
+body:not(.dark) .kos-setup-check-row { color: rgba(0,0,0,0.70); }
+
+.kos-setup-checkbox {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 2px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  position: relative;
+  transition: background 0.18s, border-color 0.18s;
+}
+body:not(.dark) .kos-setup-checkbox {
+  border-color: rgba(0,0,0,0.22);
+  background: rgba(0,0,0,0.04);
+}
+.kos-setup-checkbox::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 3px;
+  background: #fff;
+  transform: scale(0);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.kos-setup-checkbox.checked {
+  background: #007aff;
+  border-color: #007aff;
+}
+.kos-setup-checkbox.checked::after { transform: scale(1); }
+
+/* ── STEP 2: Account Form ─────────────────────────────────────── */
+.kos-setup-form { display: flex; flex-direction: column; gap: 18px; }
+
+.kos-setup-field { display: flex; flex-direction: column; gap: 6px; }
+
+.kos-setup-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+}
+body:not(.dark) .kos-setup-label { color: rgba(0,0,0,0.42); }
+
+.kos-setup-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.65;
+}
+
+.kos-setup-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.95);
+  outline: none;
+  transition: border-color 0.18s, background 0.18s;
+  box-sizing: border-box;
+}
+body:not(.dark) .kos-setup-input {
+  background: rgba(255,255,255,0.80);
+  border-color: rgba(0,0,0,0.14);
+  color: #1c1c1e;
+}
+.kos-setup-input::placeholder { color: rgba(255,255,255,0.28); }
+body:not(.dark) .kos-setup-input::placeholder { color: rgba(0,0,0,0.30); }
+
+.kos-setup-input:focus {
+  border-color: #007aff;
+  background: rgba(0, 122, 255, 0.08);
+}
+body:not(.dark) .kos-setup-input:focus {
+  background: rgba(0,122,255,0.05);
+}
+
+.kos-setup-field-hint {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.28);
+}
+body:not(.dark) .kos-setup-field-hint { color: rgba(0,0,0,0.30); }
+
+.kos-setup-acct-err {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.88rem;
+  color: #ff453a;
+  min-height: 1.2em;
+  font-weight: 500;
+  padding-left: 2px;
+}
+
+/* ── STEP 3: Appearance ───────────────────────────────────────── */
+.kos-setup-appear-row {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.kos-setup-theme-opt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 12px 12px;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.60);
+  user-select: none;
+}
+body:not(.dark) .kos-setup-theme-opt {
+  border-color: rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.04);
+  color: rgba(0,0,0,0.55);
+}
+.kos-setup-theme-opt:hover { border-color: rgba(255,255,255,0.20); }
+body:not(.dark) .kos-setup-theme-opt:hover { border-color: rgba(0,0,0,0.18); }
+.kos-setup-theme-opt.selected {
+  border-color: #007aff;
+  background: rgba(0,122,255,0.12);
+  color: #fff;
+}
+body:not(.dark) .kos-setup-theme-opt.selected {
+  background: rgba(0,122,255,0.08);
+  color: #1c1c1e;
+}
+
+.kos-theme-preview {
+  width: 100%;
+  height: 80px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+  flex-shrink: 0;
+}
+.kos-theme-light-prev {
+  background: linear-gradient(160deg, #f5f5f7 0%, #e5e5ea 100%);
+  position: relative;
+}
+.kos-theme-light-prev::before {
+  content: '';
+  position: absolute;
+  top: 8px; left: 8px; right: 8px;
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.10);
+}
+.kos-theme-light-prev::after {
+  content: '';
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 50%; height: 8px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.08);
+}
+.kos-theme-dark-prev {
+  background: linear-gradient(160deg, #1c1c1e 0%, #2c2c2e 100%);
+  position: relative;
+}
+.kos-theme-dark-prev::before {
+  content: '';
+  position: absolute;
+  top: 8px; left: 8px; right: 8px;
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.10);
+}
+.kos-theme-dark-prev::after {
+  content: '';
+  position: absolute;
+  bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 50%; height: 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.07);
+}
+
+/* Glass toggle row */
+.kos-setup-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+body:not(.dark) .kos-setup-toggle-row {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.07);
+}
+.kos-setup-tgl-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.88);
+  flex: 1;
+  flex-wrap: wrap;
+}
+body:not(.dark) .kos-setup-tgl-label { color: rgba(0,0,0,0.78); }
+.kos-setup-tgl-sub {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.35);
+  width: 100%;
+  margin-top: -4px;
+}
+body:not(.dark) .kos-setup-tgl-sub { color: rgba(0,0,0,0.38); }
+
+/* Avatar section */
+.kos-setup-avatar-section { margin-top: 2px; }
+
+.kos-setup-avatar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.kos-setup-avatar-opt {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2.5px solid rgba(255,255,255,0.14);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.18s, transform 0.14s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.08);
+}
+body:not(.dark) .kos-setup-avatar-opt {
+  border-color: rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.05);
+}
+.kos-setup-avatar-opt img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.kos-setup-avatar-opt:hover { border-color: rgba(255,255,255,0.45); transform: scale(1.07); }
+.kos-setup-avatar-opt.selected {
+  border-color: #007aff;
+  box-shadow: 0 0 0 3px rgba(0,122,255,0.30);
+}
+
+.kos-avatar-upload {
+  border-radius: 50%;
+  border-style: dashed;
+  border-color: rgba(255,255,255,0.20);
+  color: rgba(255,255,255,0.45);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+body:not(.dark) .kos-avatar-upload {
+  border-color: rgba(0,0,0,0.18);
+  color: rgba(0,0,0,0.35);
+}
+.kos-avatar-upload:hover { border-color: #007aff; color: #007aff; }
+
+/* ── STEP 4: Wallpaper ────────────────────────────────────────── */
+.kos-setup-wp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.kos-setup-wp-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  transition: border-color 0.18s, transform 0.14s;
+  background: transparent;
+}
+body:not(.dark) .kos-setup-wp-opt { border-color: rgba(0,0,0,0.08); }
+.kos-setup-wp-opt:hover { border-color: rgba(255,255,255,0.28); transform: scale(1.02); }
+body:not(.dark) .kos-setup-wp-opt:hover { border-color: rgba(0,0,0,0.22); }
+.kos-setup-wp-opt.selected {
+  border-color: #007aff;
+  box-shadow: 0 0 0 2px rgba(0,122,255,0.25);
+}
+
+.kos-setup-wp-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #2c2c2e;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.kos-setup-wp-opt.selected .kos-setup-wp-thumb::after {
+  content: '\f00c';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #007aff;
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  display: grid;
+  place-items: center;
+}
+
+.kos-setup-wp-label {
+  display: block;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  text-align: center;
+  padding: 0 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body:not(.dark) .kos-setup-wp-label { color: rgba(0,0,0,0.45); }
+
+/* ── STEP 5: Icon Palettes ────────────────────────────────────── */
+.kos-setup-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.kos-setup-palette-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 10px 12px;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.14s;
+  user-select: none;
+}
+body:not(.dark) .kos-setup-palette-opt {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.08);
+}
+.kos-setup-palette-opt:hover { border-color: rgba(255,255,255,0.25); transform: scale(1.03); }
+body:not(.dark) .kos-setup-palette-opt:hover { border-color: rgba(0,0,0,0.20); }
+.kos-setup-palette-opt.selected {
+  border-color: #007aff;
+  background: rgba(0,122,255,0.10);
+}
+
+.kos-palette-swatches {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 80px;
+}
+
+.kos-palette-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+
+.kos-setup-palette-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.80rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.60);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+body:not(.dark) .kos-setup-palette-label { color: rgba(0,0,0,0.52); }
+.kos-setup-palette-opt.selected .kos-setup-palette-label { color: #007aff; }
+
+/* ── STEP 6: Done screen ──────────────────────────────────────── */
+.kos-setup-done-ring {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5e5ce6, #007aff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #fff;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0,122,255,0.40);
+  animation: kos-ring-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes kos-ring-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.kos-setup-start-btn {
+  margin-top: 28px;
+  padding: 13px 36px;
+  font-size: 1.05rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,122,255,0.36);
+}

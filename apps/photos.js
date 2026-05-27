@@ -963,31 +963,31 @@ function _esc(s) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   19. Legacy global shims — preserved for cross-module compat
+   apps/photos.js — SECTION 19 REPLACEMENT
+   
+   Replace everything from "Legacy global shims" (section 19)
+   to the end of the file with the content below.
+   
+   What was removed:
+     window.openLightbox    — no other file calls this
+     window.setGalleryTab   — no other file calls this
+     window.galleryDelete   — no other file calls this
+     window.phTriggerUpload — no other file calls this
+     window.phSetAlbum      — no other file calls this
+     window.phSetView       — no other file calls this
+     window.phDeleteCell    — no other file calls this
+   
+   All seven were legacy exports from an older API revision.
+   The current app uses internal module functions directly.
    ══════════════════════════════════════════════════════════════ */
-window.openLightbox  = (encSrc) => {
-  const src = decodeURIComponent(encSrc);
-  const idx = _currentImgs.findIndex(i => i.src === src);
-  if (idx >= 0) openLightboxAtIdx(idx);
-};
-window.setGalleryTab = tab => phSetAlbum(
-  ({ all: 'library', avatar: 'avatars', wallpaper: 'wallpapers' })[tab] || 'library'
-);
-window.galleryDelete = async (encSrc) => {
-  const src = decodeURIComponent(encSrc);
-  const idx = _currentImgs.findIndex(i => i.src === src);
-  if (idx >= 0) await deleteCell(idx);
-};
-window.phTriggerUpload = () => document.getElementById('ph-file-input')?.click();
-window.phSetAlbum      = phSetAlbum;
-window.phSetView       = phSetView;
-window.phDeleteCell    = async (encSrc, type, idbId) => {
-  const idx = idbId >= 0
-    ? _currentImgs.findIndex(i => i.idbId === idbId)
-    : _currentImgs.findIndex(i => i.src === decodeURIComponent(encSrc));
-  if (idx >= 0) await deleteCell(idx);
-};
 
+/* ══════════════════════════════════════════════════════════════
+   20. WM registration  (keep this — it's the only thing needed)
+   ══════════════════════════════════════════════════════════════ */
+if (typeof WM !== 'undefined') {
+  WM.setOnOpen('gallery',    () => window.KOSApps.gallery.init());
+  WM.setOnClose?.('gallery', cleanup);
+}
 /* ══════════════════════════════════════════════════════════════
    20. WM registration
    ══════════════════════════════════════════════════════════════ */

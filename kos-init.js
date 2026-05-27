@@ -1,33 +1,24 @@
 /* ══════════════════════════════════════════════════════════════
    KOS ULTIMATE 2026 — kos-init.js (Merged + Optimised)
-   Includes: Boot Orchestrator, Spotlight Search, and Dock Module.
    ══════════════════════════════════════════════════════════════ */
 
-/* ─── Cached element refs (populated once on first use) ─── */
 let _spotlightOverlay = null;
 let _spotlightInput   = null;
 let _spotlightGrid    = null;
-let _filterRaf        = null;   /* rAF handle for debounced filter */
+let _filterRaf        = null;
 
-// --- FIRST BOOT AUTO-OPEN LOGIC ---
-// Check if this is the user's first time entering the homescreen
+// --- FIRST BOOT AUTO-OPEN ---
 if (!localStorage.getItem('kos_first_boot_complete')) {
-    // Check if the Window Manager and launch method are available
     if (typeof WM !== 'undefined' && typeof WM.launch === 'function') {
-        // Launch the Release Notes app using its unique manifest ID
-        WM.launch('releasenotes'); 
-        
-        // Set the flag in localStorage so this block never runs again
+        WM.launch('releasenotes');
         localStorage.setItem('kos_first_boot_complete', 'true');
-        
-        // Optional: Show a small toast notification welcoming the user
         if (typeof showToast === 'function') {
             showToast('Welcome to KOS Ultimate 2026!');
         }
     }
 }
-// ----------------------------------
-/* ─── Spotlight Search Logic ─── */
+
+/* ─── Spotlight ─── */
 function buildSpotlightGrid() {
   if (!_spotlightGrid) _spotlightGrid = document.getElementById('spotlight-grid');
   const grid = _spotlightGrid;
@@ -70,9 +61,6 @@ function handleSpotlightBackdrop(e) {
   if (e.target === _spotlightOverlay) closeSpotlight();
 }
 
-/* filterSpotlight is called on every keystroke.
-   Debounce via rAF: if another key comes before the next paint,
-   cancel the pending frame and reschedule — avoids redundant DOM walks. */
 function filterSpotlight(query) {
   if (_filterRaf) cancelAnimationFrame(_filterRaf);
   _filterRaf = requestAnimationFrame(() => {
@@ -86,19 +74,7 @@ function filterSpotlight(query) {
   });
 }
 
-/* ─── Dock Module Logic ───────────────────────────────────────
-   Fully decoupled from the Window Manager.
-   To change ANY dock behaviour, only edit this section.
-
-   LISTENS TO:
-     kos:app-opened              → marks icon as running
-     kos:app-closed              → removes running indicator
-     kos:app-minimized           → keeps running indicator
-     kos:app-restored            → marks as running
-     kos:windows-visible-changed → auto-hide logic
-     kos:registry-changed        → full dock rebuild (Studio publish)
-     kos:request-spotlight-close → close spotlight (forwarded from WM)
-   ─────────────────────────────────────────────────────────────── */
+/* ─── Dock ─── */
 function renderDock() {
   const container = document.getElementById('dock-apps');
   if (!container) return;
@@ -117,11 +93,6 @@ function renderDock() {
       container.appendChild(div);
     });
 
-  /* ── Running-apps section ─────────────────────────────────────
-     Shows icons of apps that are open but NOT pinned to the dock.
-     Created once; subsequent renderDock calls clear it and re-sync
-     from WM.registry so running state is never lost on rebuild.
-  ─────────────────────────────────────────────────────────────── */
   let runSep = document.getElementById('dock-running-sep');
   let runContainer = document.getElementById('dock-running-apps');
 
@@ -135,7 +106,6 @@ function renderDock() {
     runContainer.id = 'dock-running-apps';
     runContainer.style.cssText = 'display:flex;align-items:flex-end;gap:10px;';
 
-    /* Insert right after #dock-apps, before any existing separator/spotlight */
     container.insertAdjacentElement('afterend', runSep);
     runSep.insertAdjacentElement('afterend', runContainer);
   } else {
@@ -143,7 +113,6 @@ function renderDock() {
     runSep.style.display = 'none';
   }
 
-  /* Re-sync open apps from WM registry after a manifest rebuild */
   if (window.WM && WM.registry) {
     Object.entries(WM.registry).forEach(([appId, state]) => {
       if (state.open) _setRunning(appId, true);
@@ -153,20 +122,11 @@ function renderDock() {
 
 const _dockEl = document.getElementById('dock');
 
-/** Helper: is this appId pinned in the dock manifest? */
 function _isPinned(appId) {
   return AppManifest.some(a => a.id === appId && a.metadata.showInDock);
 }
 
-/**
- * _setRunning(appId, isRunning)
- *
- * • Pinned apps   → toggle .dock-running on their existing #dock-apps item.
- * • Non-pinned    → add / remove a temporary item in #dock-running-apps.
- *   The separator (#dock-running-sep) is shown only when the section is non-empty.
- */
 function _setRunning(appId, isRunning) {
-  /* Cache the dock-apps container reference */
   const dockApps = document.getElementById('dock-apps');
   const pinnedItem = dockApps?.querySelector(`.dock-item[data-app-id="${appId}"]`);
   if (pinnedItem) {
@@ -174,7 +134,6 @@ function _setRunning(appId, isRunning) {
     return;
   }
 
-  /* --- Non-pinned: dynamic running section --- */
   const runContainer = document.getElementById('dock-running-apps');
   const runSep       = document.getElementById('dock-running-sep');
   if (!runContainer) return;
@@ -184,7 +143,6 @@ function _setRunning(appId, isRunning) {
   if (isRunning && !existing) {
     const app = AppManifest.find(a => a.id === appId);
     if (!app) return;
-
     const div = document.createElement('div');
     div.className = 'dock-item dock-running';
     div.dataset.appId = appId;
@@ -192,7 +150,6 @@ function _setRunning(appId, isRunning) {
     div.innerHTML = `${buildAppIcon(app)}<span class="dock-label">${app.name}</span>`;
     div.addEventListener('click', () => WM.launch(app.id));
     runContainer.appendChild(div);
-
     if (runSep) runSep.style.display = '';
   } else if (!isRunning && existing) {
     existing.remove();
@@ -200,7 +157,7 @@ function _setRunning(appId, isRunning) {
   }
 }
 
-/* ─── Global Event Listeners ─── */
+/* ─── Global event listeners ─── */
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSpotlight(); }, { passive: true });
 
 function _setSpotlightClearance(dockIsHidden) {
@@ -223,7 +180,6 @@ _dockEl?.addEventListener('mouseleave', () => {
   }
 }, { passive: true });
 
-/* Event Bus listeners */
 KOSBus.on('kos:registry-changed', () => {
   buildSpotlightGrid();
   renderDock();
@@ -235,7 +191,7 @@ KOSBus.on('kos:windows-visible-changed', e => {
   if (!_dockEl) return;
   const dockHidden = e.detail.hasVisible;
   _dockEl.classList.toggle('dock-hidden', dockHidden);
-  _setSpotlightClearance(dockHidden);  /* keep spotlight panel in sync */
+  _setSpotlightClearance(dockHidden);
 });
 
 KOSBus.on('kos:app-opened',    e => _setRunning(e.detail.appId, true));
@@ -245,62 +201,44 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
 
 /* ─── Boot Orchestrator ─── */
 (async function init() {
-  /* 0. Apply display settings first so zoom/brightness/font-size are
-        set before any other UI renders, preventing a flash of unstyled UI. */
-  if (typeof KOSDisplay !== 'undefined') KOSDisplay.apply();
 
-  /* 0b. Initialise the KOS Filesystem kernel.
-         Opens the unified IndexedDB, migrates legacy per-type stores,
-         and resolves KOSFS.ready so all app init() calls can proceed.
-         Must run before any app that calls KOSFS.registerApp() or
-         await KOSFS.ready (files.js, notes.js, photos.js …). */
+  /* 1. Apply display settings once — prevents flash of unstyled content */
+  if (typeof KOSDisplay !== 'undefined') KOSDisplay.apply();
+  /* REMOVED: duplicate KOSDisplay.apply() call that followed step 1b */
+
+  /* 2. Initialise KOSFS kernel filesystem */
   if (typeof KOSFS !== 'undefined') {
     try { await KOSFS.init(); }
     catch (e) { console.error('[KOS Boot] KOSFS.init() failed:', e); }
   }
 
-  /* 1. Restore persisted user preferences */
+  /* 3. Restore persisted user preferences */
   applyWallpaper(localStorage.getItem(KEY_WALLPAPER));
   applyAvatar(localStorage.getItem(KEY_AVATAR));
   applyIconPalette(getCurrentPaletteId());
 
-  /* 1b. Apply display settings (zoom, text size, bold, brightness)
-         KOSDisplay is defined in kos-display.js which loads before
-         kos-init.js in the defer chain.                           */
-  if (window.KOSDisplay) KOSDisplay.apply();
-
-  /* 2. Apply any saved CSS/JS overrides */
-  const overrideMap = getSysOverrides();
-  Object.keys(overrideMap).forEach(appId => {
-    /* Overrides are applied lazily on open via WM.open() */
-  });
-
-  /* 3. Restore any apps published via KOS Studio */
+  /* 4. Restore Studio-published custom apps */
   KOSStudio.restorePublished();
 
-  /* 4. Build Dock from manifest */
+  /* 5. Build dock and spotlight from manifest */
   renderDock();
-
-  /* 5. Build Spotlight grid from manifest */
   buildSpotlightGrid();
 
-  /* 6. Set initial spotlight clearance — dock is visible at boot */
+  /* 6. Set initial spotlight clearance — dock visible at boot */
   _setSpotlightClearance(false);
 
-  /* 7. Restore previous session
-     FIX #9: this call was missing entirely — the comment existed but no code
-     ran, meaning windows, positions, and maximized state were never restored
-     across page loads. */
+  /* 7. Restore previous session windows */
   WM.restoreSession();
+
+  /* REMOVED: the dead getSysOverrides() + empty forEach block that was here.
+     System overrides are applied lazily per-app inside WM.open(), so
+     iterating the override map at boot time served no purpose. */
+
 })();
 
-/* ─── Screen HTML Patch ──────────────────────────────────────────
-   Injects pure-CSS markup for boot / sleep / restart / shutdown,
-   and rebuilds the login screen DOM with a live clock block.
-   ─────────────────────────────────────────────────────────────── */
+/* ─── Screen HTML Patch ─── */
 (function patchScreenHTML() {
 
-  /* ── Boot ── */
   const boot = document.getElementById('screen-boot');
   if (boot) {
     boot.innerHTML = `
@@ -312,19 +250,9 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
       </div>`;
   }
 
-  /* ── Login — Win11 style rebuild ──────────────────────────────
-     Reshapes the existing DOM without destroying onclick handlers.
-     Strategy:
-       1. Wrap clock + card in .login-center-col.
-       2. Add .login-arrow-btn to .login-input-wrap (proxies signin).
-       3. Inject .login-bottom-bar (system buttons proxy pill-btn clicks).
-     The original .login-actions pill-btns remain in the DOM (hidden by
-     CSS) so any login.js onclick bindings continue to work unchanged.
-  ─────────────────────────────────────────────────────────────── */
   const loginScreen = document.getElementById('screen-login');
   if (loginScreen) {
 
-    /* ── 1. Build center column wrapper (once only) ── */
     if (!loginScreen.querySelector('.login-center-col')) {
       const card = loginScreen.querySelector('.login-card');
 
@@ -347,10 +275,8 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
       }
     }
 
-    /* ── 2. Inject arrow submit button into the input row ── */
     const inputWrap = loginScreen.querySelector('.login-input-wrap');
     if (inputWrap && !inputWrap.querySelector('.login-arrow-btn')) {
-      /* Enter key on the field fires the arrow button */
       const field = inputWrap.querySelector('.login-input');
       if (field) {
         field.addEventListener('keydown', e => {
@@ -363,19 +289,14 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
       arrowBtn.title = 'Sign in';
       arrowBtn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
       arrowBtn.addEventListener('click', () => {
-        /* Proxy to the hidden .pill-btn.signin so existing login JS fires */
         const signIn = loginScreen.querySelector('.pill-btn.signin');
         if (signIn) signIn.click();
       });
       inputWrap.appendChild(arrowBtn);
     }
 
-    /* ── 3. Build bottom system bar (once only) ── */
     if (!loginScreen.querySelector('.login-bottom-bar')) {
-      /* Collect non-signin pill-btns and proxy them as system buttons */
-      const otherBtns = [
-        ...loginScreen.querySelectorAll('.pill-btn:not(.signin)')
-      ];
+      const otherBtns = [...loginScreen.querySelectorAll('.pill-btn:not(.signin)')];
 
       const sysBtnHTML = otherBtns.map((btn, i) =>
         `<button class="login-sys-btn" data-proxy-idx="${i}"
@@ -387,27 +308,17 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
       const bar = document.createElement('div');
       bar.className = 'login-bottom-bar';
       bar.innerHTML = `
-        <div class="login-bottom-left">
-         
-        </div>
-        <div class="login-bottom-right">
-        
-          </button>
-          ${sysBtnHTML}
-        </div>`;
+        <div class="login-bottom-left"></div>
+        <div class="login-bottom-right">${sysBtnHTML}</div>`;
 
       loginScreen.appendChild(bar);
 
-      /* Wire proxy clicks after inserting into DOM */
       bar.querySelectorAll('.login-sys-btn[data-proxy-idx]').forEach(sb => {
         const idx = parseInt(sb.dataset.proxyIdx, 10);
         sb.addEventListener('click', () => otherBtns[idx]?.click());
       });
     }
 
-    /* ── 4. Live clock — updates every second ──
-       Arrays hoisted out of the tick function so they are allocated once.
-       Element refs cached; guard prevents double-interval if patch runs twice. */
     if (!loginScreen.dataset.clockInit) {
       loginScreen.dataset.clockInit = '1';
       const _LC_DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -431,7 +342,6 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
     }
   }
 
-  /* ── Sleep ── */
   const sleep = document.getElementById('screen-sleep');
   if (sleep) {
     sleep.innerHTML = `
@@ -439,7 +349,6 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
       <span class="sleep-hint">Click anywhere to wake</span>`;
   }
 
-  /* ── Restart ── */
   const restart = document.getElementById('screen-restart');
   if (restart) {
     restart.innerHTML = `
@@ -447,7 +356,6 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
       <span class="restart-label">Restarting</span>`;
   }
 
-  /* ── Shutdown ── */
   const shutdown = document.getElementById('screen-shutdown');
   if (shutdown) {
     shutdown.innerHTML = `
