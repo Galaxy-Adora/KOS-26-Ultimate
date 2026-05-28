@@ -1,0 +1,624 @@
+/* ══════════════════════════════════════════════════════════════
+   KOS ULTIMATE 2026 — kos-modal.css
+   System-level modal dialog system.
+
+   Appears above every window, dock, and panel.
+   Glass aesthetic · Light + Dark mode · No-glass fallback.
+   Spring entrance / exit · Stacking support.
+
+   LOAD ORDER (index.html — add after wm.css):
+     <link rel="stylesheet" href="css/kos-modal.css">
+
+   Z-INDEX HIERARCHY:
+     Windows            500–999
+     Dock / Topbar      1 000
+     Context menu       9 000
+     KOSFS Picker      19 000
+     System Modals     50 000   ← this file
+     Brightness        2 147 483 646
+   ══════════════════════════════════════════════════════════════ */
+
+
+/* ════════════════════════════════════════════════════════════════
+   OVERLAY BACKDROP
+   Each modal gets its own overlay element so multiple modals
+   can stack naturally (DOM order = visual order).
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-overlay {
+  position : fixed;
+  inset     : 0;
+  z-index   : 50000;         /* incremented per-modal via inline style */
+
+  display         : flex;
+  align-items     : center;
+  justify-content : center;
+
+  background       : rgba(0, 0, 0, 0.30);
+  backdrop-filter  : blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+
+  /* Hidden by default — JS adds .kos-modal-active to reveal */
+  opacity        : 0;
+  pointer-events : none;
+  transition     : opacity 0.24s ease;
+}
+
+.kos-modal-overlay.kos-modal-active {
+  opacity        : 1;
+  pointer-events : all;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   MODAL CARD  (shared base for all modal types)
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-card {
+  /* Sizing */
+  width     : min(460px, 90vw);
+  max-width : 460px;
+
+  /* Liquid glass — light mode */
+  background       : rgba(255, 255, 255, 0.74);
+  backdrop-filter  : blur(52px) saturate(1.95) brightness(1.04);
+  -webkit-backdrop-filter: blur(52px) saturate(1.95) brightness(1.04);
+  border           : 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow       :
+    0 40px 100px rgba(0, 0, 0, 0.20),
+    0 10px  28px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+
+  border-radius : 20px;
+  overflow      : hidden;
+
+  /* Spring entrance — starts shrunken/invisible */
+  transform  : scale(0.86) translateY(-14px);
+  opacity    : 0;
+  transition :
+    transform 0.40s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity   0.24s ease;
+}
+
+.kos-modal-overlay.kos-modal-active .kos-modal-card {
+  transform : scale(1) translateY(0);
+  opacity   : 1;
+}
+
+/* Top specular highlight */
+.kos-modal-card::before {
+  content    : '';
+  position   : absolute;
+  top        : 0;
+  left       : 12%;
+  right      : 12%;
+  height     : 1px;
+  background : rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   MODAL BODY  (icon + title + message)
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-body {
+  display         : flex;
+  flex-direction  : column;
+  align-items     : center;
+  text-align      : center;
+  gap             : 10px;
+  padding         : 32px 30px 22px;
+}
+
+/* ── Variant icon bubble ── */
+.kos-modal-icon-wrap {
+  width         : 56px;
+  height        : 56px;
+  border-radius : 50%;
+  display       : flex;
+  align-items   : center;
+  justify-content: center;
+  font-size     : 1.55rem;
+  flex-shrink   : 0;
+  margin-bottom : 2px;
+  transition    : transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Icon animation on entrance */
+.kos-modal-overlay.kos-modal-active .kos-modal-icon-wrap {
+  animation: kos-modal-icon-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+@keyframes kos-modal-icon-bounce {
+  from { transform: scale(0.5); opacity: 0.4; }
+  to   { transform: scale(1);   opacity: 1;   }
+}
+
+/* Variant color tokens */
+.kos-modal-icon-wrap.variant-info     { background: rgba(0, 122, 255, 0.11);  color: #007aff; }
+.kos-modal-icon-wrap.variant-warning  { background: rgba(255, 159, 10, 0.12); color: #ff9f0a; }
+.kos-modal-icon-wrap.variant-error    { background: rgba(255, 59, 48, 0.11);  color: #ff3b30; }
+.kos-modal-icon-wrap.variant-success  { background: rgba(52, 199, 89, 0.11);  color: #34c759; }
+.kos-modal-icon-wrap.variant-system   { background: rgba(94, 92, 230, 0.11);  color: #5e5ce6; }
+.kos-modal-icon-wrap.variant-question { background: rgba(0, 122, 255, 0.11);  color: #007aff; }
+
+/* ── Title ── */
+.kos-modal-title {
+  font-family    : 'Outfit', -apple-system, sans-serif;
+  font-size      : 1.08rem;
+  font-weight    : 700;
+  color          : rgba(0, 0, 0, 0.88);
+  letter-spacing : -0.015em;
+  line-height    : 1.3;
+  margin         : 0;
+}
+
+/* ── Message / body text ── */
+.kos-modal-message {
+  font-family : 'Outfit', -apple-system, sans-serif;
+  font-size   : 0.875rem;
+  color       : rgba(0, 0, 0, 0.50);
+  line-height : 1.58;
+  margin      : 0;
+  max-width   : 360px;
+}
+
+/* ── Detail (smaller, for technical info) ── */
+.kos-modal-detail {
+  font-family   : 'Share Tech Mono', monospace;
+  font-size     : 0.75rem;
+  color         : rgba(0, 0, 0, 0.36);
+  background    : rgba(0, 0, 0, 0.04);
+  border        : 1px solid rgba(0, 0, 0, 0.07);
+  border-radius : 8px;
+  padding       : 8px 12px;
+  width         : 100%;
+  text-align    : left;
+  word-break    : break-all;
+  box-sizing    : border-box;
+  margin-top    : 4px;
+}
+
+/* ── Text input (prompt type) ── */
+.kos-modal-input {
+  width         : 100%;
+  padding       : 11px 14px;
+  border-radius : 10px;
+  border        : 1px solid rgba(0, 0, 0, 0.12);
+  background    : rgba(0, 0, 0, 0.04);
+  font-family   : 'Outfit', -apple-system, sans-serif;
+  font-size     : 0.9rem;
+  color         : rgba(0, 0, 0, 0.88);
+  outline       : none;
+  box-sizing    : border-box;
+  transition    : border-color 0.18s, box-shadow 0.18s;
+  margin-top    : 2px;
+}
+
+.kos-modal-input:focus {
+  border-color : #007aff;
+  box-shadow   : 0 0 0 3px rgba(0, 122, 255, 0.14);
+}
+
+.kos-modal-input::placeholder { color: rgba(0, 0, 0, 0.26); }
+
+/* Textarea variant */
+.kos-modal-input.multiline {
+  min-height  : 90px;
+  resize      : vertical;
+  line-height : 1.5;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   PROGRESS BAR  (used by the progress modal type)
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-progress-wrap {
+  width      : 100%;
+  margin-top : 6px;
+}
+
+.kos-modal-progress-track {
+  width         : 100%;
+  height        : 5px;
+  border-radius : 999px;
+  background    : rgba(0, 0, 0, 0.07);
+  overflow      : hidden;
+  position      : relative;
+}
+
+.kos-modal-progress-fill {
+  height        : 100%;
+  border-radius : 999px;
+  background    : linear-gradient(90deg, #007aff, #5e5ce6);
+  transition    : width 0.35s ease;
+  transform-origin: left;
+}
+
+/* Indeterminate shimmer */
+.kos-modal-progress-fill.indeterminate {
+  width     : 45% !important;
+  animation : kos-modal-indeterminate 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes kos-modal-indeterminate {
+  0%   { margin-left: -45%; }
+  100% { margin-left: 110%; }
+}
+
+.kos-modal-progress-row {
+  display         : flex;
+  align-items     : center;
+  justify-content : space-between;
+  margin-top      : 8px;
+}
+
+.kos-modal-progress-sub {
+  font-family : 'Outfit', sans-serif;
+  font-size   : 0.75rem;
+  color       : rgba(0, 0, 0, 0.38);
+}
+
+.kos-modal-progress-pct {
+  font-family   : 'Share Tech Mono', monospace;
+  font-size     : 0.72rem;
+  color         : rgba(0, 0, 0, 0.38);
+  min-width     : 36px;
+  text-align    : right;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   HORIZONTAL SEPARATOR
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-sep {
+  height     : 1px;
+  background : rgba(0, 0, 0, 0.07);
+  flex-shrink: 0;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   BUTTON ROW  (alert / confirm / prompt / progress-cancel)
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-buttons {
+  display        : flex;
+  flex-direction : column;
+}
+
+/* Horizontal: ≤ 2 short-label buttons side by side */
+.kos-modal-buttons.horizontal {
+  flex-direction : row;
+}
+
+.kos-modal-btn {
+  flex            : 1;
+  padding         : 15px 16px;
+  border          : none;
+  background      : transparent;
+  font-family     : 'Outfit', -apple-system, sans-serif;
+  font-size       : 0.92rem;
+  font-weight     : 500;
+  cursor          : pointer;
+  transition      : background 0.14s ease, transform 0.10s ease;
+  letter-spacing  : -0.01em;
+  user-select     : none;
+  position        : relative;
+  outline         : none;
+}
+
+.kos-modal-btn:active  { transform: scale(0.97); }
+.kos-modal-btn:focus-visible {
+  box-shadow : inset 0 0 0 2px rgba(0, 122, 255, 0.45);
+  border-radius: 2px;
+}
+
+/* Vertical separator between side-by-side buttons */
+.kos-modal-buttons.horizontal .kos-modal-btn + .kos-modal-btn {
+  border-left : 1px solid rgba(0, 0, 0, 0.07);
+}
+
+/* Horizontal separator between stacked buttons */
+.kos-modal-buttons:not(.horizontal) .kos-modal-btn + .kos-modal-btn {
+  border-top : 1px solid rgba(0, 0, 0, 0.07);
+}
+
+/* ── Button variants ── */
+
+/* Default / Cancel */
+.kos-modal-btn.btn-cancel,
+.kos-modal-btn.btn-default {
+  color : #007aff;
+}
+.kos-modal-btn.btn-cancel:hover,
+.kos-modal-btn.btn-default:hover  { background: rgba(0, 122, 255, 0.06); }
+
+/* Primary / Confirm (bold weight) */
+.kos-modal-btn.btn-primary {
+  color       : #007aff;
+  font-weight : 700;
+}
+.kos-modal-btn.btn-primary:hover { background: rgba(0, 122, 255, 0.06); }
+
+/* Destructive / Delete */
+.kos-modal-btn.btn-destructive {
+  color       : #ff3b30;
+  font-weight : 600;
+}
+.kos-modal-btn.btn-destructive:hover { background: rgba(255, 59, 48, 0.06); }
+
+/* Success */
+.kos-modal-btn.btn-success {
+  color       : #34c759;
+  font-weight : 600;
+}
+.kos-modal-btn.btn-success:hover { background: rgba(52, 199, 89, 0.06); }
+
+
+/* ════════════════════════════════════════════════════════════════
+   ACTION SHEET  (multiple stacked choices — sheet type)
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-sheet-header {
+  padding     : 16px 24px 10px;
+  text-align  : center;
+}
+
+.kos-modal-sheet-header-title {
+  font-family  : 'Outfit', -apple-system, sans-serif;
+  font-size    : 0.92rem;
+  font-weight  : 600;
+  color        : rgba(0, 0, 0, 0.70);
+  margin       : 0 0 4px;
+}
+
+.kos-modal-sheet-header-sub {
+  font-family : 'Outfit', -apple-system, sans-serif;
+  font-size   : 0.80rem;
+  color       : rgba(0, 0, 0, 0.40);
+  margin      : 0;
+  line-height : 1.45;
+}
+
+.kos-modal-sheet-actions {
+  display        : flex;
+  flex-direction : column;
+  gap            : 0;
+  padding        : 0 0 4px;
+}
+
+.kos-modal-sheet-btn {
+  width           : 100%;
+  padding         : 15px 22px;
+  border          : none;
+  border-top      : 1px solid rgba(0, 0, 0, 0.06);
+  background      : transparent;
+  font-family     : 'Outfit', -apple-system, sans-serif;
+  font-size       : 0.95rem;
+  font-weight     : 500;
+  cursor          : pointer;
+  display         : flex;
+  align-items     : center;
+  justify-content : center;
+  gap             : 10px;
+  transition      : background 0.13s, transform 0.10s;
+  color           : rgba(0, 0, 0, 0.82);
+  user-select     : none;
+  text-align      : center;
+  outline         : none;
+}
+
+.kos-modal-sheet-btn:first-child { border-top: none; }
+.kos-modal-sheet-btn:hover  { background: rgba(0, 0, 0, 0.04); }
+.kos-modal-sheet-btn:active { transform: scale(0.99); background: rgba(0, 0, 0, 0.07); }
+
+.kos-modal-sheet-btn .kos-sheet-icon {
+  width      : 22px;
+  font-size  : 0.9rem;
+  text-align : center;
+  flex-shrink: 0;
+  opacity    : 0.72;
+}
+
+.kos-modal-sheet-btn.btn-primary    { color: #007aff; font-weight: 700; }
+.kos-modal-sheet-btn.btn-destructive{ color: #ff3b30; font-weight: 600; }
+.kos-modal-sheet-btn.btn-disabled   { opacity: 0.35; cursor: default; pointer-events: none; }
+
+
+/* ════════════════════════════════════════════════════════════════
+   CUSTOM / LOADING MODAL EXTRAS
+   ════════════════════════════════════════════════════════════════ */
+
+/* Spinner (used by loading modal) */
+.kos-modal-spinner {
+  width         : 38px;
+  height        : 38px;
+  border-radius : 50%;
+  border        : 3px solid rgba(0, 0, 0, 0.10);
+  border-top    : 3px solid #007aff;
+  animation     : kos-modal-spin 0.75s linear infinite;
+  flex-shrink   : 0;
+  margin-bottom : 4px;
+}
+
+@keyframes kos-modal-spin { to { transform: rotate(360deg); } }
+
+/* App icon display (for app-level error dialogs) */
+.kos-modal-app-icon {
+  width         : 56px;
+  height        : 56px;
+  border-radius : 26%;
+  display       : flex;
+  align-items   : center;
+  justify-content: center;
+  font-size     : 1.5rem;
+  color         : #fff;
+  box-shadow    : 0 4px 14px rgba(0, 0, 0, 0.20);
+  flex-shrink   : 0;
+  margin-bottom : 4px;
+}
+
+/* Countdown badge (e.g. "Auto-closing in 5 s") */
+.kos-modal-countdown {
+  font-family  : 'Share Tech Mono', monospace;
+  font-size    : 0.72rem;
+  color        : rgba(0, 0, 0, 0.30);
+  margin-top   : 2px;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE OVERRIDES
+   ════════════════════════════════════════════════════════════════ */
+
+body.dark .kos-modal-overlay {
+  background       : rgba(0, 0, 0, 0.55);
+  backdrop-filter  : blur(10px) saturate(1.6);
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+}
+
+body.dark .kos-modal-card {
+  background       : rgba(26, 26, 36, 0.84);
+  border-color     : rgba(255, 255, 255, 0.09);
+  box-shadow       :
+    0 40px 100px rgba(0, 0, 0, 0.65),
+    0 10px  28px rgba(0, 0, 0, 0.40),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter  : blur(52px) saturate(2.0) brightness(0.88);
+  -webkit-backdrop-filter: blur(52px) saturate(2.0) brightness(0.88);
+}
+
+body.dark .kos-modal-card::before {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Icon variants — dark */
+body.dark .kos-modal-icon-wrap.variant-info     { background: rgba(10, 132, 255, 0.18); color: #0a84ff; }
+body.dark .kos-modal-icon-wrap.variant-warning  { background: rgba(255, 159, 10, 0.18); color: #ff9f0a; }
+body.dark .kos-modal-icon-wrap.variant-error    { background: rgba(255, 69, 58,  0.18); color: #ff453a; }
+body.dark .kos-modal-icon-wrap.variant-success  { background: rgba(48, 209, 88,  0.18); color: #30d158; }
+body.dark .kos-modal-icon-wrap.variant-system   { background: rgba(94, 92, 230,  0.18); color: #7b78f0; }
+body.dark .kos-modal-icon-wrap.variant-question { background: rgba(10, 132, 255, 0.18); color: #0a84ff; }
+
+body.dark .kos-modal-title   { color: rgba(255, 255, 255, 0.92); }
+body.dark .kos-modal-message { color: rgba(255, 255, 255, 0.46); }
+
+body.dark .kos-modal-detail {
+  color      : rgba(255, 255, 255, 0.32);
+  background : rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Input — dark */
+body.dark .kos-modal-input {
+  background   : rgba(255, 255, 255, 0.07);
+  border-color : rgba(255, 255, 255, 0.11);
+  color        : rgba(255, 255, 255, 0.90);
+}
+body.dark .kos-modal-input::placeholder { color: rgba(255, 255, 255, 0.22); }
+body.dark .kos-modal-input:focus {
+  border-color : #0a84ff;
+  box-shadow   : 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+/* Progress — dark */
+body.dark .kos-modal-progress-track { background: rgba(255, 255, 255, 0.09); }
+body.dark .kos-modal-progress-sub   { color: rgba(255, 255, 255, 0.32); }
+body.dark .kos-modal-progress-pct   { color: rgba(255, 255, 255, 0.32); }
+
+/* Separator — dark */
+body.dark .kos-modal-sep { background: rgba(255, 255, 255, 0.07); }
+
+/* Buttons — dark */
+body.dark .kos-modal-buttons.horizontal .kos-modal-btn + .kos-modal-btn {
+  border-left-color: rgba(255, 255, 255, 0.07);
+}
+body.dark .kos-modal-buttons:not(.horizontal) .kos-modal-btn + .kos-modal-btn {
+  border-top-color: rgba(255, 255, 255, 0.07);
+}
+
+body.dark .kos-modal-btn.btn-cancel,
+body.dark .kos-modal-btn.btn-default   { color: #0a84ff; }
+body.dark .kos-modal-btn.btn-primary   { color: #0a84ff; }
+body.dark .kos-modal-btn.btn-destructive { color: #ff453a; }
+body.dark .kos-modal-btn.btn-success   { color: #30d158; }
+
+body.dark .kos-modal-btn.btn-cancel:hover,
+body.dark .kos-modal-btn.btn-default:hover    { background: rgba(10, 132, 255, 0.10); }
+body.dark .kos-modal-btn.btn-primary:hover    { background: rgba(10, 132, 255, 0.10); }
+body.dark .kos-modal-btn.btn-destructive:hover{ background: rgba(255, 69, 58,  0.10); }
+body.dark .kos-modal-btn.btn-success:hover    { background: rgba(48, 209, 88,  0.10); }
+
+/* Sheet — dark */
+body.dark .kos-modal-sheet-header-title { color: rgba(255, 255, 255, 0.62); }
+body.dark .kos-modal-sheet-header-sub   { color: rgba(255, 255, 255, 0.30); }
+
+body.dark .kos-modal-sheet-btn {
+  color      : rgba(255, 255, 255, 0.88);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+body.dark .kos-modal-sheet-btn:hover  { background: rgba(255, 255, 255, 0.06); }
+body.dark .kos-modal-sheet-btn:active { background: rgba(255, 255, 255, 0.10); }
+
+body.dark .kos-modal-sheet-btn.btn-primary    { color: #0a84ff; }
+body.dark .kos-modal-sheet-btn.btn-destructive{ color: #ff453a; }
+
+/* Spinner — dark */
+body.dark .kos-modal-spinner {
+  border-color    : rgba(255, 255, 255, 0.10);
+  border-top-color: #0a84ff;
+}
+
+/* Countdown — dark */
+body.dark .kos-modal-countdown { color: rgba(255, 255, 255, 0.26); }
+
+
+/* ════════════════════════════════════════════════════════════════
+   NO-GLASS FALLBACK
+   ════════════════════════════════════════════════════════════════ */
+
+body.no-glass .kos-modal-overlay {
+  backdrop-filter          : none !important;
+  -webkit-backdrop-filter  : none !important;
+  background               : rgba(0, 0, 0, 0.52) !important;
+}
+
+body.no-glass .kos-modal-card {
+  backdrop-filter         : none !important;
+  -webkit-backdrop-filter : none !important;
+  background              : rgba(242, 244, 250, 0.99) !important;
+  border-color            : rgba(0, 0, 0, 0.10) !important;
+  box-shadow              : 0 8px 40px rgba(0, 0, 0, 0.18) !important;
+}
+
+body.dark.no-glass .kos-modal-card {
+  background  : rgba(24, 24, 36, 0.99) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow  : 0 8px 40px rgba(0, 0, 0, 0.55) !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   STACKED MODALS  (slight scale offset on cards beneath the top)
+   ════════════════════════════════════════════════════════════════ */
+
+.kos-modal-overlay.kos-modal-stacked-1 .kos-modal-card {
+  transform : scale(0.962) translateY(10px);
+}
+.kos-modal-overlay.kos-modal-stacked-2 .kos-modal-card {
+  transform : scale(0.924) translateY(20px);
+}
+.kos-modal-overlay.kos-modal-stacked-1 {
+  background: rgba(0, 0, 0, 0.10);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.kos-modal-overlay.kos-modal-stacked-2 {
+  background: rgba(0, 0, 0, 0.05);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

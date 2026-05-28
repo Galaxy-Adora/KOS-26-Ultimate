@@ -212,7 +212,23 @@ const AppManifest = [
       offset: 30, bodyId: 'music-body',
     },
   },
-
+{
+    id        : 'devhub',
+    name      : 'Developer Hub',
+    iconClass : 'icon-developer',
+    faIcon    : 'fa-code',
+    jsPath    : 'apps/dev-hub.js',
+    cssPath   : 'css/apps/dev-hub.css', // Adds the isolated styling path here
+    permissions: ['documents', 'apps'],
+    metadata: { showInDock: true, searchable: true, isSystemApp: false },
+    initData: {
+      ...winSize(65, [16, 10]),
+      ratio: [16, 10], 
+      size: 65,
+      offset: 25, 
+      bodyId: 'devhub-body',
+    },
+  },
   {
     id        : 'videos',
     name      : 'Videos',

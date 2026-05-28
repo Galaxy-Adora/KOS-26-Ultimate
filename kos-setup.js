@@ -172,15 +172,14 @@
 
     /* Collected settings before applying on finish */
     _d: {
-      username    : '',
-      password    : '',
-      confirm     : '',
-      isDark      : false,
-      isGlass     : true,
-      avatarSrc   : null,
-      wallpaper   : 'default',
-      palette     : 'default',
-      tosAccepted : false,   // persists checkbox state across Back/Next navigation
+      username : '',
+      password : '',
+      confirm  : '',
+      isDark   : false,
+      isGlass  : true,
+      avatarSrc: null,
+      wallpaper: 'default',
+      palette  : 'default',
     },
 
     /* ── 1. Entry point called by the boot hook ── */
@@ -284,7 +283,7 @@
 
       const nextHTML = !isDone
         ? `<button class="kos-setup-btn kos-setup-btn-primary" id="ks-next"
-                   ${this._step === 1 && !this._d.tosAccepted ? 'disabled' : ''}>${nextLabel}</button>`
+                   ${this._step === 1 ? 'disabled' : ''}>${nextLabel}</button>`
         : '';
 
       el.innerHTML = backHTML + nextHTML;
@@ -364,7 +363,7 @@
           </div>
 
           <label class="kos-setup-check-row" id="ks-tos-row">
-            <div class="kos-setup-checkbox${this._d.tosAccepted ? ' checked' : ''}" id="ks-tos-box"></div>
+            <div class="kos-setup-checkbox" id="ks-tos-box"></div>
             <span>I have read and agree to the Terms &amp; Conditions</span>
           </label>
         </div>`;
@@ -479,13 +478,16 @@
           <p class="kos-setup-sub">Choose a background for your desktop.</p>
           <div class="kos-setup-wp-grid" id="ks-wp-grid">
             ${_WALLPAPERS.map(w => {
-              const bgStyle = w.url
-                ? `background-image:url('${w.url}');background-color:#1c1c1e;background-size:cover;background-position:center`
-                : `background:${w.css || '#2c2c2e'}`;
+              /* Always render a visible CSS gradient so something meaningful shows
+                 even if the photo URL is missing or fails to load.
+                 _wire() step 4 probes each URL and swaps it in only if it loads. */
+              const fallback = w.css || '#2c2c2e';
               return `
               <div class="kos-setup-wp-opt ${this._d.wallpaper === w.key ? 'selected' : ''}"
                    data-key="${w.key}" title="${w.label}">
-                <div class="kos-setup-wp-thumb" style="${bgStyle}"></div>
+                <div class="kos-setup-wp-thumb"
+                     style="background:${fallback};background-size:cover;background-position:center"
+                     data-img-url="${w.url || ''}"></div>
                 <span class="kos-setup-wp-label">${w.label}</span>
               </div>`;
             }).join('')}
@@ -495,17 +497,31 @@
 
     /* Step 5 — Icon palette */
     _stepIcons() {
+      /* Build 6 mini app-icon mockups for each palette.
+         Each icon uses a gradient of two consecutive palette colours so the
+         preview looks like real tinted icons, not just abstract swatches. */
+      const _iconMockups = (colors) => {
+        /* FA unicode glyphs used purely as decorative shapes inside icons */
+        const shapes = ['\uf001','\uf030','\uf121','\uf02d','\uf11b','\uf0e0'];
+        return colors.slice(0, 6).map((c, i) => {
+          const c2 = colors[(i + 2) % colors.length];
+          return `<div class="kos-palette-icon"
+                       style="background:linear-gradient(135deg,${c} 0%,${c2} 100%)">
+                    <span class="kos-palette-icon-glyph">${shapes[i]}</span>
+                  </div>`;
+        }).join('');
+      };
+
       return `
         <div class="kos-step">
           <h2 class="kos-setup-h2">Icon Style</h2>
-          <p class="kos-setup-sub">Pick a colour palette for your app icons.</p>
+          <p class="kos-setup-sub">Pick a colour theme for your app icons.</p>
           <div class="kos-setup-palette-grid" id="ks-palette-grid">
             ${_PALETTES.map(p => `
               <div class="kos-setup-palette-opt ${this._d.palette === p.id ? 'selected' : ''}"
                    data-id="${p.id}" role="button">
-                <div class="kos-palette-swatches">
-                  ${p.colors.slice(0, 6).map(c =>
-                    `<div class="kos-palette-dot" style="background:${c}"></div>`).join('')}
+                <div class="kos-palette-icons-grid">
+                  ${_iconMockups(p.colors)}
                 </div>
                 <span class="kos-setup-palette-label">${p.label}</span>
               </div>`).join('')}
@@ -549,7 +565,6 @@
         row?.addEventListener('click', () => {
           const on   = !box.classList.contains('checked');
           box.classList.toggle('checked', on);
-          this._d.tosAccepted = on;             // persist so Back → step 1 restores state
           const next = document.getElementById('ks-next'); // query at click-time
           if (next) next.disabled = !on;
         });
@@ -622,8 +637,9 @@
                 });
       }
 
-      /* ── Wallpaper selection ── */
+      /* ── Wallpaper selection + image probing ── */
       if (s === 4) {
+        /* Wire click handlers */
         document.querySelectorAll('#ks-wp-grid .kos-setup-wp-opt')
                 .forEach(opt => opt.addEventListener('click', () => {
                   document.querySelectorAll('#ks-wp-grid .kos-setup-wp-opt')
@@ -631,6 +647,21 @@
                   opt.classList.add('selected');
                   this._d.wallpaper = opt.dataset.key;
                 }));
+
+        /* Probe each wallpaper URL. If the image loads successfully, swap it
+           in as background-image over the gradient fallback already in place.
+           If it 404s or errors, the gradient remains visible — never a blank. */
+        document.querySelectorAll('#ks-wp-grid .kos-setup-wp-thumb[data-img-url]')
+                .forEach(thumb => {
+                  const url = thumb.dataset.imgUrl;
+                  if (!url) return;
+                  const probe = new Image();
+                  probe.onload = () => {
+                    thumb.style.backgroundImage = `url('${url}')`;
+                  };
+                  /* onerror: do nothing — gradient fallback already visible */
+                  probe.src = url;
+                });
       }
 
       /* ── Palette selection (+ live preview) ── */
@@ -789,24 +820,48 @@
       }
 
       setTimeout(() => {
-        /*
-         * The KOS "desktop" is not a .screen element — it is the body
-         * wallpaper rendered behind all the fixed overlays. Clearing
-         * .active from every .screen element is all that is needed to
-         * reveal it. Do NOT try getElementById('screen-desktop'); that
-         * element does not exist and chasing it caused the black screen.
-         */
-        document.querySelectorAll('.screen')
-                .forEach(s => s.classList.remove('active'));
+        /* Hide setup */
+        this._el.classList.remove('active');
 
-        /* Let the kernel restore any previously saved app windows.
-           On genuine first boot this is a no-op (empty session). */
-        try { window.WM?.restoreSession?.(); } catch (_) {}
+        /* ── Route through the real KOS login flow ──────────────────────
+           Simply clearing .screen.active reveals the body wallpaper, but
+           the kernel (WM, dock, topbar) may stay in a pre-login state —
+           producing a blank/unresponsive desktop.
+           Instead: briefly show #screen-login and fire attemptLogin() so
+           the kernel's own login→desktop transition runs normally.
+           ──────────────────────────────────────────────────────────────── */
 
-        /* Notify any listeners that a login just succeeded. */
-        try {
-          KOSBus?.dispatch('kos:login', { source: 'kos-setup', skipPassword: true });
-        } catch (_) {}
+        /* If no password was chosen, mark no-password so attemptLogin passes */
+        if (!this._d.password) {
+          localStorage.setItem('kos-no-password', 'true');
+        }
+
+        const loginEl = document.getElementById('screen-login');
+        if (loginEl) {
+          /* Clear all overlays first, then re-show login for the transition */
+          document.querySelectorAll('.screen')
+                  .forEach(s => s.classList.remove('active'));
+          loginEl.classList.add('active');
+
+          /* Pre-fill the password box (empty string passes if kos-no-password set) */
+          const pwBox = loginEl.querySelector('input[type="password"]');
+          if (pwBox) pwBox.value = this._d.password || '';
+
+          /* Fire the kernel login after the screen fades in */
+          setTimeout(() => {
+            if (typeof attemptLogin === 'function') {
+              attemptLogin();
+            } else {
+              loginEl.querySelector('.pill-btn.signin')?.click();
+            }
+          }, 350);
+
+        } else {
+          /* Fallback if login screen doesn't exist: remove all overlays */
+          document.querySelectorAll('.screen')
+                  .forEach(s => s.classList.remove('active'));
+          try { window.WM?.restoreSession?.(); } catch (_) {}
+        }
       }, 450);
     },
 
