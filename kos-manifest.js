@@ -144,7 +144,6 @@ const AppManifest = [
     },
   },
 
-  /* terminal — single entry only (duplicate removed) */
   {
     id        : 'terminal',
     name      : 'Terminal',
@@ -212,13 +211,14 @@ const AppManifest = [
       offset: 30, bodyId: 'music-body',
     },
   },
-{
+
+  {
     id        : 'devhub',
     name      : 'Developer Hub',
     iconClass : 'icon-developer',
     faIcon    : 'fa-code',
     jsPath    : 'apps/dev-hub.js',
-    cssPath   : 'css/apps/dev-hub.css', // Adds the isolated styling path here
+    cssPath   : 'css/apps/dev-hub.css',
     permissions: ['documents', 'apps'],
     metadata: { showInDock: true, searchable: true, isSystemApp: false },
     initData: {
@@ -229,19 +229,21 @@ const AppManifest = [
       bodyId: 'devhub-body',
     },
   },
+
   {
-    id        : 'videos',
-    name      : 'Videos',
+    id        : 'store',
+    name      : 'App Store',
     iconClass : 'icon-video',
-    faIcon    : 'fa-film',
-    jsPath    : 'apps/videos.js',
-    cssPath   : 'css/apps/videos.css',
+    faIcon    : 'fa-store',
+    jsPath    : 'apps/app-store.js',
+    cssPath   : 'css/apps/app-store.css',
     permissions: ['videos', 'audios'],
     metadata: { showInDock: true, searchable: true, isSystemApp: false },
     initData: {
       ...winSize(64, [16, 9]),
       ratio: [16, 9], size: 64,
-      offset: 35, bodyId: 'videos-body',
+      offset: 35, 
+      bodyId: 'store-body', // Fixed to match your script's document lookup selection target
     },
   },
 

@@ -1,0 +1,860 @@
+/* ══════════════════════════════════════════════════════════════
+   KOS ULTIMATE 2026 — css/app-store.css
+   KOS App Store — iOS App Store-inspired liquid glass UI.
+   Light + Dark mode · Smooth animations · Full responsive layout.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── CSS tokens ────────────────────────────────────────────── */
+#win-store {
+  --ks-bg          : rgba(245, 247, 252, 0.85);
+  --ks-surface     : rgba(255, 255, 255, 0.82);
+  --ks-surface-2   : rgba(240, 242, 248, 0.70);
+  --ks-border      : rgba(0, 0, 0, 0.07);
+  --ks-text-1      : #1c1c1e;
+  --ks-text-2      : #48484a;
+  --ks-text-3      : #8e8e93;
+  --ks-accent      : #007aff;
+  --ks-accent-soft : rgba(0, 122, 255, 0.10);
+  --ks-danger      : #ff3b30;
+  --ks-sep         : rgba(0, 0, 0, 0.06);
+  --ks-shadow      : 0 1px 4px rgba(0, 0, 0, 0.08);
+  --ks-radius      : 14px;
+  --ks-blur        : blur(20px) saturate(1.6);
+}
+
+body.dark #win-store {
+  --ks-bg          : rgba(12, 12, 18, 0.88);
+  --ks-surface     : rgba(30, 30, 40, 0.80);
+  --ks-surface-2   : rgba(22, 22, 32, 0.70);
+  --ks-border      : rgba(255, 255, 255, 0.08);
+  --ks-text-1      : rgba(240, 240, 255, 0.96);
+  --ks-text-2      : rgba(200, 200, 220, 0.62);
+  --ks-text-3      : rgba(150, 150, 170, 0.45);
+  --ks-accent      : #0a84ff;
+  --ks-accent-soft : rgba(10, 132, 255, 0.14);
+  --ks-sep         : rgba(255, 255, 255, 0.06);
+  --ks-shadow      : 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Window host override ──────────────────────────────────── */
+#win-store .win-body {
+  padding   : 0 !important;
+  overflow  : hidden !important;
+  background: var(--ks-bg);
+  backdrop-filter: var(--ks-blur);
+  -webkit-backdrop-filter: var(--ks-blur);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SHELL
+   ══════════════════════════════════════════════════════════════ */
+.ks-shell {
+  display       : flex;
+  flex-direction: column;
+  height        : 100%;
+  overflow      : hidden;
+  font-family   : 'Outfit', -apple-system, 'SF Pro Display', sans-serif;
+  color         : var(--ks-text-1);
+  position      : relative;
+}
+
+/* ── Top bar ───────────────────────────────────────────────── */
+.ks-topbar {
+  display         : flex;
+  flex-direction  : column;
+  gap             : 10px;
+  padding         : 16px 18px 0;
+  flex-shrink     : 0;
+  background      : var(--ks-bg);
+  backdrop-filter : var(--ks-blur);
+  -webkit-backdrop-filter: var(--ks-blur);
+  border-bottom   : 1px solid var(--ks-sep);
+  padding-bottom  : 12px;
+}
+
+.ks-topbar-title {
+  font-size    : 1.55rem;
+  font-weight  : 800;
+  letter-spacing: -0.025em;
+  color        : var(--ks-text-1);
+  line-height  : 1;
+}
+
+/* ── Search ────────────────────────────────────────────────── */
+.ks-search-wrap {
+  position    : relative;
+  display     : flex;
+  align-items : center;
+}
+
+.ks-search-icon {
+  position   : absolute;
+  left       : 12px;
+  color      : var(--ks-text-3);
+  font-size  : 0.8rem;
+  pointer-events: none;
+}
+
+.ks-search-input {
+  width          : 100%;
+  padding        : 9px 36px;
+  border-radius  : 12px;
+  border         : 1px solid var(--ks-border);
+  background     : var(--ks-surface);
+  color          : var(--ks-text-1);
+  font-family    : inherit;
+  font-size      : 0.88rem;
+  font-weight    : 400;
+  outline        : none;
+  transition     : border-color 0.18s, box-shadow 0.18s;
+}
+.ks-search-input:focus {
+  border-color : var(--ks-accent);
+  box-shadow   : 0 0 0 3px var(--ks-accent-soft);
+}
+.ks-search-input::placeholder { color: var(--ks-text-3); }
+
+.ks-search-clear {
+  position     : absolute;
+  right        : 10px;
+  width        : 20px;
+  height       : 20px;
+  border-radius: 50%;
+  border       : none;
+  background   : var(--ks-text-3);
+  color        : var(--ks-bg);
+  font-size    : 0.6rem;
+  cursor       : pointer;
+  display      : flex;
+  align-items  : center;
+  justify-content: center;
+  transition   : background 0.15s;
+}
+.ks-search-clear:hover { background: var(--ks-text-2); }
+
+/* ── Category pill bar ─────────────────────────────────────── */
+.ks-cat-bar {
+  display          : flex;
+  gap              : 7px;
+  padding          : 10px 18px;
+  overflow-x       : auto;
+  flex-shrink      : 0;
+  scrollbar-width  : none;
+  border-bottom    : 1px solid var(--ks-sep);
+  background       : var(--ks-bg);
+  backdrop-filter  : var(--ks-blur);
+  -webkit-backdrop-filter: var(--ks-blur);
+}
+.ks-cat-bar::-webkit-scrollbar { display: none; }
+
+.ks-cat-pill {
+  display      : flex;
+  align-items  : center;
+  gap          : 5px;
+  padding      : 6px 13px;
+  border-radius: 999px;
+  border       : 1px solid var(--ks-border);
+  background   : var(--ks-surface);
+  color        : var(--ks-text-2);
+  font-family  : inherit;
+  font-size    : 0.78rem;
+  font-weight  : 600;
+  white-space  : nowrap;
+  cursor       : pointer;
+  transition   : background 0.16s, color 0.16s, border-color 0.16s,
+                 transform 0.14s cubic-bezier(0.34,1.56,0.64,1);
+  flex-shrink  : 0;
+}
+.ks-cat-pill i       { font-size: 0.7rem; }
+.ks-cat-pill:hover   { background: var(--ks-accent-soft); color: var(--ks-accent); transform: scale(1.04); }
+.ks-cat-pill.active  {
+  background  : var(--ks-accent);
+  color       : #fff;
+  border-color: transparent;
+  box-shadow  : 0 2px 10px rgba(0,122,255,0.35);
+}
+.ks-cat-count {
+  background  : rgba(255,255,255,0.28);
+  color       : inherit;
+  font-size   : 0.65rem;
+  padding     : 1px 5px;
+  border-radius: 999px;
+  font-weight : 700;
+}
+.ks-cat-pill.active .ks-cat-count { background: rgba(255,255,255,0.30); }
+
+/* ── Scroll body ───────────────────────────────────────────── */
+.ks-scroll-body {
+  flex        : 1;
+  overflow-y  : auto;
+  overflow-x  : hidden;
+  padding     : 16px 18px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ks-sep) transparent;
+}
+.ks-scroll-body::-webkit-scrollbar       { width: 5px; }
+.ks-scroll-body::-webkit-scrollbar-thumb { background: var(--ks-sep); border-radius: 99px; }
+
+/* ── Results bar ───────────────────────────────────────────── */
+.ks-results-bar      { margin-bottom: 12px; }
+.ks-results-count    { font-size: 1rem; font-weight: 700; color: var(--ks-text-1); letter-spacing: -0.01em; }
+.ks-results-count strong { color: var(--ks-accent); }
+
+/* ══════════════════════════════════════════════════════════════
+   HERO FEATURED CARD
+   ══════════════════════════════════════════════════════════════ */
+.ks-hero-card {
+  position      : relative;
+  border-radius : 20px;
+  overflow      : hidden;
+  cursor        : pointer;
+  margin-bottom : 20px;
+  min-height    : 160px;
+  border        : 1px solid rgba(255,255,255,0.14);
+  box-shadow    : 0 8px 32px rgba(0,0,0,0.18);
+  transition    : transform 0.22s cubic-bezier(0.34,1.20,0.64,1), box-shadow 0.22s;
+}
+.ks-hero-card:hover {
+  transform : translateY(-3px);
+  box-shadow: 0 14px 44px rgba(0,0,0,0.26);
+}
+
+.ks-hero-bg {
+  position: absolute;
+  inset   : 0;
+}
+.ks-hero-glow {
+  position  : absolute;
+  inset     : 0;
+  background: linear-gradient(to bottom right, rgba(255,255,255,0.12) 0%, transparent 60%);
+}
+
+.ks-hero-content {
+  position   : relative;
+  padding    : 22px 22px 20px;
+  display    : flex;
+  flex-direction: column;
+  gap        : 8px;
+  height     : 100%;
+}
+
+.ks-hero-eyebrow {
+  font-size     : 0.62rem;
+  font-weight   : 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color         : rgba(255,255,255,0.65);
+}
+
+.ks-hero-icon { flex-shrink: 0; }
+
+.ks-hero-name {
+  font-size    : 1.35rem;
+  font-weight  : 800;
+  color        : #fff;
+  letter-spacing: -0.02em;
+  line-height  : 1.15;
+}
+.ks-hero-desc {
+  font-size : 0.82rem;
+  color     : rgba(255,255,255,0.72);
+  line-height: 1.45;
+  flex      : 1;
+  display   : -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow  : hidden;
+}
+.ks-hero-action {
+  display    : flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top : 4px;
+}
+.ks-hero-cat-pill {
+  font-size    : 0.7rem;
+  font-weight  : 600;
+  padding      : 4px 10px;
+  border-radius: 999px;
+  background   : rgba(255,255,255,0.18);
+  color        : #fff;
+  backdrop-filter: blur(4px);
+}
+.ks-hero-arrow {
+  color    : rgba(255,255,255,0.60);
+  font-size: 0.78rem;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   APP LIST ROWS
+   ══════════════════════════════════════════════════════════════ */
+.ks-app-list {
+  display       : flex;
+  flex-direction: column;
+  gap           : 0;
+  background    : var(--ks-surface);
+  border-radius : var(--ks-radius);
+  border        : 1px solid var(--ks-border);
+  overflow      : hidden;
+  box-shadow    : var(--ks-shadow);
+}
+
+.ks-list-row {
+  display     : flex;
+  align-items : center;
+  gap         : 13px;
+  padding     : 13px 14px;
+  cursor      : pointer;
+  transition  : background 0.14s;
+  border-bottom: 1px solid var(--ks-sep);
+  position    : relative;
+}
+.ks-list-row:last-child  { border-bottom: none; }
+.ks-list-row:hover       { background: var(--ks-accent-soft); }
+
+.ks-row-icon-wrap {
+  position   : relative;
+  flex-shrink: 0;
+}
+
+/* System / custom micro-badge on icon corner */
+.ks-sys-badge,
+.ks-custom-badge {
+  position     : absolute;
+  bottom       : -3px;
+  right        : -3px;
+  width        : 16px;
+  height       : 16px;
+  border-radius: 50%;
+  display      : flex;
+  align-items  : center;
+  justify-content: center;
+  font-size    : 0.45rem;
+  border       : 1.5px solid var(--ks-surface);
+}
+.ks-sys-badge    { background: #636366; color: #fff; }
+.ks-custom-badge { background: #5e5ce6; color: #fff; }
+
+.ks-row-body {
+  flex       : 1;
+  min-width  : 0;
+  display    : flex;
+  flex-direction: column;
+  gap        : 2px;
+}
+.ks-row-name {
+  font-size    : 0.92rem;
+  font-weight  : 600;
+  color        : var(--ks-text-1);
+  white-space  : nowrap;
+  overflow     : hidden;
+  text-overflow: ellipsis;
+}
+.ks-row-cat {
+  font-size  : 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.ks-row-desc {
+  font-size    : 0.76rem;
+  color        : var(--ks-text-2);
+  line-height  : 1.4;
+  display      : -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow     : hidden;
+  margin-top   : 1px;
+}
+.ks-row-meta {
+  display    : flex;
+  gap        : 8px;
+  margin-top : 3px;
+  align-items: center;
+}
+.ks-row-ver {
+  font-size  : 0.65rem;
+  font-weight: 600;
+  color      : var(--ks-text-3);
+  background : var(--ks-sep);
+  padding    : 1px 6px;
+  border-radius: 5px;
+}
+.ks-row-dev {
+  font-size: 0.65rem;
+  color    : var(--ks-text-3);
+  white-space: nowrap;
+  overflow : hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-row-action {
+  display    : flex;
+  align-items: center;
+  gap        : 8px;
+  flex-shrink: 0;
+}
+.ks-row-chevron {
+  font-size: 0.62rem;
+  color    : var(--ks-text-3);
+}
+
+/* ── Open button ───────────────────────────────────────────── */
+.ks-open-btn {
+  padding      : 6px 14px;
+  border-radius: 999px;
+  border       : none;
+  background   : var(--ks-accent-soft);
+  color        : var(--ks-accent);
+  font-family  : inherit;
+  font-size    : 0.78rem;
+  font-weight  : 700;
+  cursor       : pointer;
+  white-space  : nowrap;
+  transition   : background 0.15s, transform 0.14s cubic-bezier(0.34,1.56,0.64,1);
+  flex-shrink  : 0;
+}
+.ks-open-btn:hover  { background: var(--ks-accent); color: #fff; transform: scale(1.05); }
+.ks-open-btn:active { transform: scale(0.96); }
+
+/* ── Empty state ───────────────────────────────────────────── */
+.ks-empty-state {
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  justify-content: center;
+  gap            : 12px;
+  padding        : 60px 30px;
+  text-align     : center;
+  color          : var(--ks-text-3);
+}
+.ks-empty-state i  { font-size: 2.5rem; opacity: 0.4; }
+.ks-empty-state p  { font-size: 0.9rem; color: var(--ks-text-2); margin: 0; }
+.ks-empty-reset {
+  padding      : 8px 20px;
+  border-radius: 10px;
+  border       : 1px solid var(--ks-border);
+  background   : var(--ks-surface);
+  color        : var(--ks-accent);
+  font-family  : inherit;
+  font-size    : 0.82rem;
+  font-weight  : 600;
+  cursor       : pointer;
+  margin-top   : 4px;
+  transition   : background 0.15s;
+}
+.ks-empty-reset:hover { background: var(--ks-accent-soft); }
+
+/* ══════════════════════════════════════════════════════════════
+   DETAIL VIEW
+   ══════════════════════════════════════════════════════════════ */
+.ks-detail-shell { }
+
+.ks-detail-topbar {
+  display         : flex;
+  align-items     : center;
+  justify-content : space-between;
+  padding         : 10px 18px;
+  border-bottom   : 1px solid var(--ks-sep);
+  flex-shrink     : 0;
+  background      : var(--ks-bg);
+  backdrop-filter : var(--ks-blur);
+  -webkit-backdrop-filter: var(--ks-blur);
+}
+
+.ks-back-btn {
+  display     : flex;
+  align-items : center;
+  gap         : 6px;
+  background  : none;
+  border      : none;
+  color       : var(--ks-accent);
+  font-family : inherit;
+  font-size   : 0.92rem;
+  font-weight : 600;
+  cursor      : pointer;
+  padding     : 5px 8px;
+  border-radius: 8px;
+  transition  : background 0.15s;
+}
+.ks-back-btn:hover { background: var(--ks-accent-soft); }
+
+.ks-open-btn-top {
+  font-size: 0.84rem;
+  padding  : 7px 18px;
+}
+
+/* ── Detail hero ───────────────────────────────────────────── */
+.ks-detail-hero {
+  display      : flex;
+  gap          : 18px;
+  padding      : 22px 18px 18px;
+  border-bottom: 1px solid var(--ks-sep);
+  align-items  : flex-start;
+  flex-shrink  : 0;
+}
+
+.ks-hero-info {
+  flex    : 1;
+  min-width: 0;
+  display : flex;
+  flex-direction: column;
+  gap     : 7px;
+}
+
+.ks-detail-appname {
+  font-size    : 1.25rem;
+  font-weight  : 800;
+  letter-spacing: -0.02em;
+  color        : var(--ks-text-1);
+  margin       : 0;
+  line-height  : 1.15;
+}
+
+.ks-detail-devname {
+  font-size  : 0.82rem;
+  color      : var(--ks-accent);
+  font-weight: 600;
+}
+.ks-dev-link {
+  color          : var(--ks-accent);
+  text-decoration: none;
+  font-weight    : 600;
+}
+.ks-dev-link:hover { text-decoration: underline; }
+
+/* Badge row */
+.ks-detail-badge-row {
+  display    : flex;
+  flex-wrap  : wrap;
+  gap        : 6px;
+  margin-top : 2px;
+}
+.ks-badge {
+  display      : flex;
+  align-items  : center;
+  gap          : 4px;
+  font-size    : 0.62rem;
+  font-weight  : 700;
+  letter-spacing: 0.05em;
+  padding      : 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+.ks-badge-sys    { background: rgba(99, 99, 102, 0.15);   color: #636366; }
+.ks-badge-custom { background: rgba(94, 92, 230, 0.15);   color: #5e5ce6; }
+.ks-badge-cat    { }
+
+body.dark .ks-badge-sys    { background: rgba(99,99,102,0.22); color: #aeaeb2; }
+body.dark .ks-badge-custom { background: rgba(94,92,230,0.22); color: #9b99ff; }
+
+/* Stat chips row */
+.ks-detail-stats-row {
+  display : flex;
+  gap     : 8px;
+  margin-top: 4px;
+}
+.ks-stat-chip {
+  background   : var(--ks-surface-2);
+  border       : 1px solid var(--ks-border);
+  border-radius: 10px;
+  padding      : 7px 11px;
+  display      : flex;
+  flex-direction: column;
+  align-items  : center;
+  gap          : 2px;
+  min-width    : 56px;
+}
+.ks-stat-val {
+  font-size  : 0.82rem;
+  font-weight: 700;
+  color      : var(--ks-text-1);
+  line-height: 1;
+}
+.ks-stat-lbl {
+  font-size    : 0.55rem;
+  font-weight  : 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color        : var(--ks-text-3);
+}
+
+/* ── CTA row ───────────────────────────────────────────────── */
+.ks-cta-row {
+  padding    : 14px 18px;
+  border-bottom: 1px solid var(--ks-sep);
+}
+.ks-cta-btn {
+  width        : 100%;
+  padding      : 12px 24px;
+  border-radius: 14px;
+  border       : none;
+  color        : #fff;
+  font-family  : inherit;
+  font-size    : 0.92rem;
+  font-weight  : 700;
+  cursor       : pointer;
+  display      : flex;
+  align-items  : center;
+  justify-content: center;
+  gap          : 8px;
+  box-shadow   : 0 4px 18px rgba(0,122,255,0.30);
+  transition   : transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
+                 filter 0.15s, box-shadow 0.18s;
+}
+.ks-cta-btn:hover  { transform: scale(1.02) translateY(-1px); filter: brightness(1.08); }
+.ks-cta-btn:active { transform: scale(0.97); }
+
+/* ── Screenshots strip ─────────────────────────────────────── */
+.ks-screenshots {
+  display         : flex;
+  gap             : 10px;
+  padding         : 16px 18px;
+  overflow-x      : auto;
+  scrollbar-width : none;
+  border-bottom   : 1px solid var(--ks-sep);
+}
+.ks-screenshots::-webkit-scrollbar { display: none; }
+
+.ks-screenshot-card {
+  flex-shrink  : 0;
+  width        : 130px;
+  height       : 100px;
+  border-radius: 14px;
+  border       : 1px solid;
+  display      : flex;
+  flex-direction: column;
+  align-items  : center;
+  justify-content: center;
+  gap          : 10px;
+  transition   : transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+.ks-screenshot-card:hover { transform: scale(1.06) translateY(-2px); }
+
+.ks-ss-icon {
+  font-size: 1.6rem;
+  color    : rgba(255,255,255,0.65);
+}
+.ks-ss-label {
+  font-size  : 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color      : rgba(255,255,255,0.55);
+}
+
+/* ── Detail sections ───────────────────────────────────────── */
+.ks-detail-section {
+  padding      : 18px 0;
+  border-bottom: 1px solid var(--ks-sep);
+}
+.ks-detail-section:last-child { border-bottom: none; }
+
+.ks-section-hd {
+  display        : flex;
+  align-items    : baseline;
+  justify-content: space-between;
+  margin-bottom  : 12px;
+  gap            : 8px;
+  flex-wrap      : wrap;
+}
+
+.ks-section-title {
+  font-size    : 1rem;
+  font-weight  : 700;
+  color        : var(--ks-text-1);
+  letter-spacing: -0.01em;
+}
+.ks-section-sub {
+  font-size  : 0.75rem;
+  color      : var(--ks-text-3);
+  display    : flex;
+  align-items: center;
+  gap        : 6px;
+  flex-shrink: 0;
+}
+
+.ks-ver-pill {
+  background   : var(--ks-accent-soft);
+  color        : var(--ks-accent);
+  font-weight  : 700;
+  font-size    : 0.68rem;
+  padding      : 2px 7px;
+  border-radius: 6px;
+}
+
+/* ── Description ───────────────────────────────────────────── */
+.ks-description {
+  font-size  : 0.87rem;
+  line-height: 1.65;
+  color      : var(--ks-text-2);
+}
+.ks-desc-para { margin-top: 10px; }
+
+/* ── Tags ──────────────────────────────────────────────────── */
+.ks-tags {
+  display   : flex;
+  flex-wrap : wrap;
+  gap       : 6px;
+  margin-top: 14px;
+}
+.ks-tag {
+  font-size    : 0.72rem;
+  font-weight  : 500;
+  color        : var(--ks-text-3);
+  background   : var(--ks-sep);
+  padding      : 3px 9px;
+  border-radius: 8px;
+  border       : 1px solid var(--ks-border);
+  transition   : background 0.14s, color 0.14s;
+}
+.ks-tag:hover { background: var(--ks-accent-soft); color: var(--ks-accent); }
+
+/* ── What's New ────────────────────────────────────────────── */
+.ks-whatsnew {
+  list-style  : none;
+  margin      : 0;
+  padding     : 0;
+  display     : flex;
+  flex-direction: column;
+  gap         : 9px;
+}
+.ks-wn-item {
+  display    : flex;
+  align-items: flex-start;
+  gap        : 10px;
+  font-size  : 0.84rem;
+  color      : var(--ks-text-2);
+  line-height: 1.5;
+}
+.ks-wn-icon {
+  flex-shrink : 0;
+  margin-top  : 2px;
+  font-size   : 0.72rem;
+}
+
+/* ── Info table ────────────────────────────────────────────── */
+.ks-info-table {
+  display       : flex;
+  flex-direction: column;
+  gap           : 0;
+  background    : var(--ks-surface);
+  border-radius : var(--ks-radius);
+  border        : 1px solid var(--ks-border);
+  overflow      : hidden;
+}
+.ks-info-row {
+  display        : flex;
+  justify-content: space-between;
+  align-items    : flex-start;
+  padding        : 10px 14px;
+  gap            : 16px;
+  border-bottom  : 1px solid var(--ks-sep);
+  font-size      : 0.82rem;
+}
+.ks-info-row:last-child { border-bottom: none; }
+
+.ks-info-label {
+  font-weight: 600;
+  color      : var(--ks-text-1);
+  flex-shrink: 0;
+  min-width  : 88px;
+}
+.ks-info-value {
+  color     : var(--ks-text-2);
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ── Storage block ─────────────────────────────────────────── */
+.ks-storage-block {
+  display       : flex;
+  flex-direction: column;
+  gap           : 10px;
+  background    : var(--ks-surface);
+  border-radius : var(--ks-radius);
+  border        : 1px solid var(--ks-border);
+  padding       : 14px;
+  overflow      : hidden;
+}
+
+.ks-stor-row {
+  display    : flex;
+  align-items: center;
+  gap        : 12px;
+}
+.ks-stor-icon {
+  width        : 36px;
+  height       : 36px;
+  border-radius: 10px;
+  display      : flex;
+  align-items  : center;
+  justify-content: center;
+  font-size    : 0.85rem;
+  flex-shrink  : 0;
+}
+.ks-stor-info {
+  flex    : 1;
+  min-width: 0;
+}
+.ks-stor-label {
+  font-size  : 0.82rem;
+  font-weight: 600;
+  color      : var(--ks-text-1);
+  margin-bottom: 4px;
+}
+.ks-stor-sub {
+  font-size  : 0.74rem;
+  color      : var(--ks-text-3);
+  margin-top : 3px;
+}
+.ks-stor-bar-wrap {
+  height       : 4px;
+  background   : var(--ks-sep);
+  border-radius: 99px;
+  overflow     : hidden;
+}
+.ks-stor-bar {
+  height       : 100%;
+  border-radius: 99px;
+  min-width    : 6px;
+  transition   : width 0.6s ease;
+}
+.ks-stor-val {
+  font-size   : 0.8rem;
+  font-weight : 700;
+  color       : var(--ks-text-1);
+  flex-shrink : 0;
+  font-family : 'Share Tech Mono', monospace;
+}
+.ks-stor-note {
+  font-size  : 0.74rem;
+  color      : var(--ks-text-3);
+  line-height: 1.5;
+  padding-top: 4px;
+  display    : flex;
+  gap        : 6px;
+  align-items: flex-start;
+  border-top : 1px solid var(--ks-sep);
+  margin-top : 4px;
+}
+.ks-stor-note i { flex-shrink: 0; margin-top: 2px; color: var(--ks-accent); }
+
+/* ══════════════════════════════════════════════════════════════
+   NO-GLASS FALLBACKS
+   ══════════════════════════════════════════════════════════════ */
+body.no-glass #win-store .win-body,
+body.no-glass .ks-topbar,
+body.no-glass .ks-cat-bar,
+body.no-glass .ks-detail-topbar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.no-glass #win-store {
+  --ks-bg     : rgba(245, 247, 252, 0.99) !important;
+  --ks-surface: rgba(255, 255, 255, 0.99) !important;
+}
+body.dark.no-glass #win-store {
+  --ks-bg     : rgba(14, 14, 22, 0.99) !important;
+  --ks-surface: rgba(24, 24, 36, 0.99) !important;
+}
