@@ -2,28 +2,6 @@
  * kos-setup.js — KOS OOBE First-Boot Setup Wizard
  * ════════════════════════════════════════════════════════════════
  * KOS Ultimate 2026  |  Kalapurackal Studios
- *
- * TWO RESPONSIBILITIES:
- *   §1  KOSUser   — Username stored in IndexedDB (kos-userdata).
- *                   Exposed globally so terminal.js can call it.
- *   §2  KOSSetup  — 7-step first-boot OOBE wizard (Win 11 style).
- *                   Only runs when localStorage('kos_setup_complete')
- *                   is absent. Intercepts the login screen via
- *                   MutationObserver — zero changes to kos-init.js.
- *
- * LOAD ORDER  (add to index.html):
- *   <link rel="stylesheet" href="css/kos-setup.css">   ← in <head>
- *   <script defer src="kos-setup.js"></script>          ← after kos-init.js
- *
- * SETTINGS SAVED:
- *   Username  → IndexedDB  kos-userdata / settings / 'username'
- *   Password  → localStorage  kos_login_password  +  kos-password
- *   Theme     → body class   +  localStorage kos-theme
- *   Glass     → body class   +  localStorage kos-glass
- *   Avatar    → applyAvatar()  or  localStorage kos-avatar
- *   Wallpaper → selectWallpaper()  or  localStorage kos-wallpaper
- *   Palette   → applyIconPalette()  +  localStorage kos-icon-palette
- *   Complete  → localStorage  kos_setup_complete = '1'
  * ════════════════════════════════════════════════════════════════
  */
 
@@ -198,9 +176,6 @@
       else      document.body.appendChild(this._el);
 
       this._buildFrame();
-      /* ← THIS was the black-screen bug: the element was injected into
-         the DOM but never made visible. We must add 'active' ourselves
-         because no other code knows this screen exists yet. */
       this._el.classList.add('active');
       this._go(0);
     },
@@ -435,7 +410,7 @@
             </div>
           </div>
 
-          <!-- Glass toggle (reuses shell.css toggle-switch) -->
+          <!-- Glass toggle -->
           <div class="kos-setup-toggle-row">
             <div class="kos-setup-tgl-label">
               <i class="fa-solid fa-droplet"></i>
@@ -478,9 +453,6 @@
           <p class="kos-setup-sub">Choose a background for your desktop.</p>
           <div class="kos-setup-wp-grid" id="ks-wp-grid">
             ${_WALLPAPERS.map(w => {
-              /* Always render a visible CSS gradient so something meaningful shows
-                 even if the photo URL is missing or fails to load.
-                 _wire() step 4 probes each URL and swaps it in only if it loads. */
               const fallback = w.css || '#2c2c2e';
               return `
               <div class="kos-setup-wp-opt ${this._d.wallpaper === w.key ? 'selected' : ''}"
@@ -497,11 +469,7 @@
 
     /* Step 5 — Icon palette */
     _stepIcons() {
-      /* Build 6 mini app-icon mockups for each palette.
-         Each icon uses a gradient of two consecutive palette colours so the
-         preview looks like real tinted icons, not just abstract swatches. */
       const _iconMockups = (colors) => {
-        /* FA unicode glyphs used purely as decorative shapes inside icons */
         const shapes = ['\uf001','\uf030','\uf121','\uf02d','\uf11b','\uf0e0'];
         return colors.slice(0, 6).map((c, i) => {
           const c2 = colors[(i + 2) % colors.length];
@@ -555,22 +523,17 @@
     _wire() {
       const s = this._step;
 
-      /* ── Terms checkbox ──
-         NOTE: #ks-next must be queried INSIDE the click handler, not here.
-         _wire() runs from _updateBody(), which fires before _updateFooter()
-         renders the button — so capturing it at wire-time always gets null. */
       if (s === 1) {
         const box = document.getElementById('ks-tos-box');
         const row = document.getElementById('ks-tos-row');
         row?.addEventListener('click', () => {
           const on   = !box.classList.contains('checked');
           box.classList.toggle('checked', on);
-          const next = document.getElementById('ks-next'); // query at click-time
+          const next = document.getElementById('ks-next');
           if (next) next.disabled = !on;
         });
       }
 
-      /* ── Account inputs live-sync ── */
       if (s === 2) {
         const uEl   = document.getElementById('ks-username');
         const pwEl  = document.getElementById('ks-password');
@@ -585,21 +548,20 @@
         cfEl?.addEventListener('input', e  => { this._d.confirm  = e.target.value; });
       }
 
-      /* ── Appearance: theme + glass + avatar ── */
       if (s === 3) {
         document.getElementById('ks-theme-light')?.addEventListener('click', () => {
           this._d.isDark = false;
           document.querySelectorAll('.kos-setup-theme-opt')
                   .forEach(el => el.classList.remove('selected'));
           document.getElementById('ks-theme-light')?.classList.add('selected');
-          document.body.classList.remove('dark');   /* live preview */
+          document.body.classList.remove('dark');
         });
         document.getElementById('ks-theme-dark')?.addEventListener('click', () => {
           this._d.isDark = true;
           document.querySelectorAll('.kos-setup-theme-opt')
                   .forEach(el => el.classList.remove('selected'));
           document.getElementById('ks-theme-dark')?.classList.add('selected');
-          document.body.classList.add('dark');      /* live preview */
+          document.body.classList.add('dark');
         });
 
         const glassToggle = document.getElementById('ks-glass-toggle');
@@ -607,11 +569,9 @@
           const on = !this.classList.contains('on');
           this.classList.toggle('on', on);
           KOSSetup._d.isGlass = on;
-          /* live preview */
           document.body.classList.toggle('no-glass', !on);
         });
 
-        /* Preset avatar clicks */
         document.querySelectorAll('#ks-avatar-grid .kos-setup-avatar-opt[data-src]')
                 .forEach(opt => opt.addEventListener('click', () => {
                   document.querySelectorAll('#ks-avatar-grid .kos-setup-avatar-opt')
@@ -620,7 +580,6 @@
                   this._d.avatarSrc = opt.dataset.src;
                 }));
 
-        /* Upload avatar */
         document.getElementById('ks-avatar-upload')
                 ?.addEventListener('change', e => {
                   const file = e.target.files?.[0];
@@ -637,9 +596,7 @@
                 });
       }
 
-      /* ── Wallpaper selection + image probing ── */
       if (s === 4) {
-        /* Wire click handlers */
         document.querySelectorAll('#ks-wp-grid .kos-setup-wp-opt')
                 .forEach(opt => opt.addEventListener('click', () => {
                   document.querySelectorAll('#ks-wp-grid .kos-setup-wp-opt')
@@ -648,9 +605,6 @@
                   this._d.wallpaper = opt.dataset.key;
                 }));
 
-        /* Probe each wallpaper URL. If the image loads successfully, swap it
-           in as background-image over the gradient fallback already in place.
-           If it 404s or errors, the gradient remains visible — never a blank. */
         document.querySelectorAll('#ks-wp-grid .kos-setup-wp-thumb[data-img-url]')
                 .forEach(thumb => {
                   const url = thumb.dataset.imgUrl;
@@ -659,12 +613,10 @@
                   probe.onload = () => {
                     thumb.style.backgroundImage = `url('${url}')`;
                   };
-                  /* onerror: do nothing — gradient fallback already visible */
                   probe.src = url;
                 });
       }
 
-      /* ── Palette selection (+ live preview) ── */
       if (s === 5) {
         document.querySelectorAll('#ks-palette-grid .kos-setup-palette-opt')
                 .forEach(opt => opt.addEventListener('click', () => {
@@ -672,14 +624,12 @@
                           .forEach(o => o.classList.remove('selected'));
                   opt.classList.add('selected');
                   this._d.palette = opt.dataset.id;
-                  /* Live-preview palette on icons behind the overlay */
                   if (typeof applyIconPalette === 'function') {
                     applyIconPalette(opt.dataset.id);
                   }
                 }));
       }
 
-      /* ── Done: launch button ── */
       if (s === 6) {
         document.getElementById('ks-start')
                 ?.addEventListener('click', () => this._launch());
@@ -692,10 +642,7 @@
 
     _next() {
       if (!this._validate()) return;
-
-      /* Moving from icons (5) to done (6): apply everything first */
       if (this._step === 5) this._applyAll();
-
       this._go(this._step + 1);
     },
 
@@ -708,12 +655,10 @@
        ══════════════════════════════════════════════════════════ */
 
     _validate() {
-      /* Terms — checkbox required */
       if (this._step === 1) {
         return !!document.getElementById('ks-tos-box')?.classList.contains('checked');
       }
 
-      /* Account — username required; passwords must match */
       if (this._step === 2) {
         const uname = document.getElementById('ks-username')?.value.trim() ?? '';
         const pw    = document.getElementById('ks-password')?.value ?? '';
@@ -749,16 +694,15 @@
     _applyAll() {
       const d = this._d;
 
-      /* 1. Theme ───────────────────────────────────────────────── */
+      /* 1. Theme */
       const hasDark  = document.body.classList.contains('dark');
       if (d.isDark !== hasDark) {
-        /* Prefer the kernel's toggleTheme() for consistent side-effects */
         if (typeof toggleTheme === 'function') toggleTheme();
         else document.body.classList.toggle('dark', d.isDark);
       }
       localStorage.setItem('kos-theme', d.isDark ? 'dark' : 'light');
 
-      /* 2. Glass ───────────────────────────────────────────────── */
+      /* 2. Glass */
       const hasGlass = !document.body.classList.contains('no-glass');
       if (d.isGlass !== hasGlass) {
         if (typeof toggleGlass === 'function') toggleGlass();
@@ -766,27 +710,30 @@
       }
       localStorage.setItem('kos-glass', d.isGlass ? 'on' : 'off');
 
-      /* 3. Password ────────────────────────────────────────────── */
+      /* 3. Password Fixes */
       if (d.password) {
-        /* Set both keys to keep terminal.js and ui-manager.js in sync */
         localStorage.setItem('kos_login_password', d.password);
         localStorage.setItem('kos-password',       d.password);
         localStorage.removeItem('kos-no-password');
+      } else {
+        /* Explicitly clear any existing password residual values and enforce auto-login */
+        localStorage.removeItem('kos_login_password');
+        localStorage.removeItem('kos-password');
+        localStorage.setItem('kos-no-password', 'true');
       }
 
-      /* 4. Avatar ──────────────────────────────────────────────── */
+      /* 4. Avatar */
       if (d.avatarSrc) {
         if (typeof applyAvatar === 'function') {
           applyAvatar(d.avatarSrc);
         } else {
-          /* Fallback: update login avatar directly */
           const av = document.getElementById('loginAvatar');
           if (av) av.src = d.avatarSrc;
           localStorage.setItem('kos-avatar', d.avatarSrc);
         }
       }
 
-      /* 5. Wallpaper ───────────────────────────────────────────── */
+      /* 5. Wallpaper */
       if (typeof selectWallpaper === 'function') {
         selectWallpaper(d.wallpaper);
       } else {
@@ -794,15 +741,15 @@
         if (typeof applyWallpaper === 'function') applyWallpaper(d.wallpaper);
       }
 
-      /* 6. Icon palette ────────────────────────────────────────── */
+      /* 6. Icon palette */
       if (typeof applyIconPalette === 'function') applyIconPalette(d.palette);
       localStorage.setItem('kos-icon-palette', d.palette);
 
-      /* 7. Username (async — non-blocking) ─────────────────────── */
+      /* 7. Username */
       KOSUser.setUsername(d.username.trim() || 'Developer')
              .catch(e => console.warn('[KOSSetup] Username save failed:', e));
 
-      /* 8. Mark setup complete ─────────────────────────────────── */
+      /* 8. Mark setup complete */
       localStorage.setItem(_SETUP_KEY, '1');
     },
 
@@ -811,7 +758,6 @@
        ══════════════════════════════════════════════════════════ */
 
     _launch() {
-      /* Fade out the setup card */
       const card = document.getElementById('kos-setup-card');
       if (card) {
         card.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
@@ -820,34 +766,22 @@
       }
 
       setTimeout(() => {
-        /* Hide setup */
         this._el.classList.remove('active');
 
-        /* ── Route through the real KOS login flow ──────────────────────
-           Simply clearing .screen.active reveals the body wallpaper, but
-           the kernel (WM, dock, topbar) may stay in a pre-login state —
-           producing a blank/unresponsive desktop.
-           Instead: briefly show #screen-login and fire attemptLogin() so
-           the kernel's own login→desktop transition runs normally.
-           ──────────────────────────────────────────────────────────────── */
-
-        /* If no password was chosen, mark no-password so attemptLogin passes */
+        /* If no password was provided, verify and seal the auto-login flag state */
         if (!this._d.password) {
           localStorage.setItem('kos-no-password', 'true');
         }
 
         const loginEl = document.getElementById('screen-login');
         if (loginEl) {
-          /* Clear all overlays first, then re-show login for the transition */
           document.querySelectorAll('.screen')
                   .forEach(s => s.classList.remove('active'));
           loginEl.classList.add('active');
 
-          /* Pre-fill the password box (empty string passes if kos-no-password set) */
           const pwBox = loginEl.querySelector('input[type="password"]');
           if (pwBox) pwBox.value = this._d.password || '';
 
-          /* Fire the kernel login after the screen fades in */
           setTimeout(() => {
             if (typeof attemptLogin === 'function') {
               attemptLogin();
@@ -857,17 +791,12 @@
           }, 350);
 
         } else {
-          /* Fallback if login screen doesn't exist: remove all overlays */
           document.querySelectorAll('.screen')
                   .forEach(s => s.classList.remove('active'));
           try { window.WM?.restoreSession?.(); } catch (_) {}
         }
       }, 450);
     },
-
-    /* ══════════════════════════════════════════════════════════
-       SMALL UTILITIES
-       ══════════════════════════════════════════════════════════ */
 
     _escHtml(s) {
       return String(s)
@@ -884,28 +813,17 @@
      §4  ENTRY POINT
      ══════════════════════════════════════════════════════════════ */
 
-  /* A — Always hydrate .login-username from IDB on every boot */
   KOSUser.applyOnBoot().catch(() => {});
 
-  /* B — Only run the wizard on the very first visit */
   if (!localStorage.getItem(_SETUP_KEY)) {
 
-    /*
-     * Strategy: wait for #screen-login to become active (the kernel adds
-     * the 'active' class when boot completes). At that moment intercept it:
-     * remove 'active' from login and add it to #screen-setup instead.
-     * MutationObserver is used so this works regardless of when the kernel
-     * fires, without any changes to kos-init.js.
-     */
     function _bootHook() {
       const loginEl = document.getElementById('screen-login');
       if (!loginEl) {
-        /* DOM not ready yet (edge case) — retry after a tick */
         setTimeout(_bootHook, 50);
         return;
       }
 
-      /* Handle the edge case where login is already active before we ran */
       if (loginEl.classList.contains('active')) {
         loginEl.classList.remove('active');
         KOSSetup.init();
@@ -922,7 +840,6 @@
       obs.observe(loginEl, { attributes: true, attributeFilter: ['class'] });
     }
 
-    /* Run after DOM is ready */
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', _bootHook);
     } else {

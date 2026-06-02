@@ -1078,3 +1078,81 @@ body.dark .st-root {
   border-color: rgba(255,59,48,0.3);
 }
 .dp-reset-btn:active { transform: scale(0.97); }
+/* ══════════════════════════════════════════════════════════════
+ /* ══════════════════════════════════════════════════════════════
+   SAMSUNG ONE UI STYLE — VERTICAL STORAGE LIST
+   ══════════════════════════════════════════════════════════════ */
+
+.oneui-storage-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.oneui-storage-main-pct {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--st-txt1);
+  letter-spacing: -0.02em;
+}
+
+.oneui-storage-main-lbl {
+  font-size: 0.85rem;
+  color: var(--st-txt2);
+  font-weight: 500;
+}
+
+.oneui-progress-bar {
+  display: flex;
+  height: 14px;
+  background: var(--st-div);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.oneui-progress-bar .segment {
+  height: 100%;
+  transition: width 0.5s ease-out;
+}
+
+/* Vertical List Layout Rules */
+.oneui-vertical-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.oneui-list-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--st-div);
+}
+
+/* Remove border on last child for clean system aesthetic */
+.oneui-list-item:last-child {
+  border-bottom: none;
+}
+
+.oneui-list-item .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+
+.oneui-list-item .lbl {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--st-txt1);
+  flex: 1;
+}
+
+.oneui-list-item .val {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--st-txt2);
+}
