@@ -366,24 +366,31 @@ function showOnly(id) {
   }
 }
 
-/* ─── 10. LOGIN ─── */
+/* ── REPLACE attemptLogin() in kos-kernel.js ── */
 function attemptLogin() {
   if (passwordBox.value === _getPassword()) {
     showOnly('screen-desktop');
     if (window.WM) WM.restoreSession();
+    /* NEW: dispatch login success so kos-sound.js can play the login sound */
+    KOSBus.dispatch('kos:login-success', {});
   } else {
     passwordBox.classList.add('shake');
-    setTimeout(() => { passwordBox.classList.remove('shake'); passwordBox.value = ''; }, 500);
+    setTimeout(() => {
+      passwordBox.classList.remove('shake');
+      passwordBox.value = '';
+    }, 500);
   }
 }
-/* Live-check while typing so fast typers don't need to press Enter */
-passwordBox.addEventListener('input', () => {
-  if (passwordBox.value === _getPassword()) attemptLogin();
-});
-
 /* ─── 11. POWER ─── */
-function triggerSleep()   { showOnly('screen-sleep'); }
+/* ── REPLACE triggerSleep() in kos-kernel.js ── */
+function triggerSleep() {
+  KOSBus.dispatch('kos:sleep', {});   /* NEW */
+  showOnly('screen-sleep');
+}
+
+/* ── REPLACE triggerRestart() in kos-kernel.js ── */
 function triggerRestart() {
+  KOSBus.dispatch('kos:restart', {}); /* NEW */
   if (window.WM) WM.clearSession();
   showOnly('screen-restart');
   setTimeout(() => {
@@ -395,13 +402,17 @@ function triggerRestart() {
     }
   }, 3000);
 }
+
+/* ── REPLACE triggerShutdown() in kos-kernel.js ── */
 function triggerShutdown() {
+  KOSBus.dispatch('kos:shutdown', {}); /* NEW */
   if (window.WM) WM.clearSession();
   showOnly('screen-shutdown');
-  setTimeout(() => { window.close(); document.body.innerHTML = "<div style='background:#000;height:100vh'></div>"; }, 3000);
+  setTimeout(() => {
+    window.close();
+    document.body.innerHTML = "<div style='background:#000;height:100vh'></div>";
+  }, 3000);
 }
-screens['screen-sleep']?.addEventListener('click', () => showOnly('screen-login'));
-
 /* ─── 12. DROPDOWNS ─── */
 function toggleMenu(el, event) {
   event.stopPropagation();

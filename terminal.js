@@ -862,21 +862,28 @@
             },
         },
 
-        _startInteractive(opts) {
-            this._interactive = opts;
-            const input = document.getElementById('term-input-field');
-            const label = document.querySelector('.term-prompt');
-            if (input) input.type = opts.maskInput ? 'password' : 'text';
-            if (label) label.textContent = opts.prompt + ' ›';
-        },
+       /* ════════════════════════════════════════════════
+   FIND _startInteractive() and add sound feedback.
+   Replace _startInteractive() entirely:
+   ════════════════════════════════════════════════ */
+_startInteractive(opts) {
+  this._interactive = opts;
+  const input = document.getElementById('term-input-field');
+  const label = document.querySelector('.term-prompt');
+  if (input) input.type = opts.maskInput ? 'password' : 'text';
+  if (label) label.textContent = opts.prompt + ' ›';
+  window.KOSSound?.play('notify');                         /* NEW — signals interactive mode */
+},
 
-        _stopInteractive() {
-            this._interactive = null;
-            const input = document.getElementById('term-input-field');
-            const label = document.querySelector('.term-prompt');
-            if (input) { input.type = 'text'; input.value = ''; }
-            if (label)   label.textContent = 'system@kos:#';
-        },
+_stopInteractive() {
+  this._interactive = null;
+  const input = document.getElementById('term-input-field');
+  const label = document.querySelector('.term-prompt');
+  if (input) { input.type = 'text'; input.value = ''; }
+  if (label) label.textContent = 'system@kos:#';
+  window.KOSSound?.play('click');                          /* NEW — signals return to normal */
+},
+
 
         init() {
             const body = document.getElementById('terminal-body');
@@ -930,17 +937,23 @@
                 const rawValue = inputField.value.trim();
                 inputField.value = '';
 
-                if (this._interactive) {
-                    this.logLine(`${this._interactive.prompt} › ${'•'.repeat(rawValue.length || 1)}`, 'user-cmd');
-                    try {
-                        await this._interactive.onInput(rawValue);
-                    } catch (err) {
-                        this.logLine(`RUNTIME ERROR: ${err.message}`, 'error-msg');
-                        this._stopInteractive();
-                    }
-                    container.scrollTop = container.scrollHeight;
-                    return;
-                }
+               /* The keydown handler section becomes: */
+if (this._interactive) {
+  this.logLine(
+    `${this._interactive.prompt} › ${'•'.repeat(rawValue.length || 1)}`,
+    'user-cmd'
+  );
+  try {
+    await this._interactive.onInput(rawValue);
+  } catch (err) {
+    window.KOSSound?.play('error');                        /* NEW */
+    this.logLine(`RUNTIME ERROR: ${err.message}`, 'error-msg');
+    this._stopInteractive();
+  }
+  container.scrollTop = container.scrollHeight;
+  return;
+}
+
 
                 if (!rawValue) return;
                 this.history.push(rawValue);
@@ -951,29 +964,41 @@
             });
         },
 
-        async processCommand(rawInput, outputArea) {
-            const parts   = rawInput.trim().split(/\s+/);
-            const cmdName = parts[0].toLowerCase();
-            const args    = parts.slice(1);
+        /* ════════════════════════════════════════════════
+   REPLACE processCommand() entirely
+   ════════════════════════════════════════════════ */
+async processCommand(rawInput, outputArea) {
+  const parts   = rawInput.trim().split(/\s+/);
+  const cmdName = parts[0].toLowerCase();
+  const args    = parts.slice(1);
 
-            if (!this.commands[cmdName]) {
-                this.logLine(`sys-err: unknown utility target: "${cmdName}"  — try "help"`, 'error-msg');
-                return;
-            }
+  if (!this.commands[cmdName]) {
+    window.KOSSound?.play('error');                        /* NEW */
+    this.logLine(`sys-err: unknown utility target: "${cmdName}"  — try "help"`, 'error-msg');
+    return;
+  }
 
-            try {
-                const result = await this.commands[cmdName].execute(args, outputArea);
-                if (result === null) return;
-                if (Array.isArray(result)) {
-                    result.forEach(line => this.logLine(line));
-                } else if (result !== undefined) {
-                    this.logLine(result);
-                }
-                try { window.KOSApps?.uimanager?._syncThemeToggles?.(); } catch (_) {}
-            } catch (err) {
-                this.logLine(`RUNTIME ERROR: ${err.message}`, 'error-msg');
-            }
-        },
+  try {
+    const result = await this.commands[cmdName].execute(args, outputArea);
+    if (result === null) return;
+
+    /* Play a subtle confirm tone on successful command output */
+    window.KOSSound?.play('click');                        /* NEW */
+
+    if (Array.isArray(result)) {
+      result.forEach(line => this.logLine(line));
+    } else if (result !== undefined) {
+      this.logLine(result);
+    }
+
+    try { window.KOSApps?.uimanager?._syncThemeToggles?.(); } catch (_) {}
+
+  } catch (err) {
+    window.KOSSound?.play('error');                        /* NEW */
+    this.logLine(`RUNTIME ERROR: ${err.message}`, 'error-msg');
+  }
+},
+
 
         logLine(text, className = '') {
             const outputArea = document.getElementById('term-output-area');

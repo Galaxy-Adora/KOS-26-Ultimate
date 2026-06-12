@@ -9,6 +9,7 @@ const ASSETS = [
   'kos-manifest.js',
   'sys-manifest.js',
   'kos-kernel.js',
+  'kos-sound.js',
   'kos-fs.js',
   'kos-fs-picker.js',
   'kos-contextmenu.js',

@@ -30,6 +30,7 @@ const KOS_SYS_MANIFEST = Object.freeze({
     { path: 'kos-manifest.js',     size: 8509,   cat: 'kernel',  desc: 'Application registry — id, icon, permissions, window sizing' },
     { path: 'sys-manifest.js',     size: 6200,   cat: 'kernel',  desc: 'System file manifest — declares every project file for systree' },
     { path: 'kos-kernel.js',       size: 19506,  cat: 'kernel',  desc: 'Core kernel — KOSBus, theme, wallpaper, avatar, login, clock, toast' },
+    { path: 'kos-sound.js',  size: 5800,  cat: 'kernel', desc: 'System sound engine — synthesized UI audio via Web Audio API. Zero extra files.' },
     { path: 'kos-fs.js',           size: 26916,  cat: 'kernel',  desc: 'KOSFS kernel module — unified IndexedDB filesystem' },
     { path: 'kos-fs-picker.js',    size: 30335,  cat: 'kernel',  desc: 'KOSFS file picker UI — shared modal for open/upload' },
     { path: 'kos-wm.js',           size: 38836,  cat: 'kernel',  desc: 'Window manager — open, close, drag, resize, snap, session' },

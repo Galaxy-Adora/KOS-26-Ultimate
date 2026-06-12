@@ -136,6 +136,7 @@ const NotesApp = {
 
     // Idiot-proof Creation Handler
     createBtn.onclick = async () => {
+      window.KOSSound?.play('click');
       const defaultName = `Note ${this.notes.length + 1}.txt`;
       try {
         const id = await KOSFS.write('notes', '', {
@@ -182,6 +183,7 @@ const NotesApp = {
 
     // Save File Contents Action
     saveBtn.onclick = async () => {
+      window.KOSSound?.play('save');
       if (!this.currentId) return;
       await this.persistActiveNote();
     };
@@ -199,12 +201,15 @@ const NotesApp = {
 
     // Direct Removal Action
     deleteBtn.onclick = async () => {
+      
       if (!this.currentId || !confirm("Are you sure you want to delete this note?")) return;
       try {
         await KOSFS.delete('notes', this.currentId);
         this.closeEditor();
         await this.refreshNotesList();
         this.showToast("Note deleted");
+        window.KOSSound?.play('delete');
+
       } catch (err) {
         console.error("Failed deleting node through KOSFS:", err);
       }

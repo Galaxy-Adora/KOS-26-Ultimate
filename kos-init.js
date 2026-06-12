@@ -202,9 +202,8 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
 /* ─── Boot Orchestrator ─── */
 (async function init() {
 
-  /* 1. Apply display settings once — prevents flash of unstyled content */
+  /* 1. Apply display settings — prevents flash of unstyled content */
   if (typeof KOSDisplay !== 'undefined') KOSDisplay.apply();
-  /* REMOVED: duplicate KOSDisplay.apply() call that followed step 1b */
 
   /* 2. Initialise KOSFS kernel filesystem */
   if (typeof KOSFS !== 'undefined') {
@@ -230,9 +229,13 @@ KOSBus.on('kos:app-closed',    e => _setRunning(e.detail.appId, false));
   /* 7. Restore previous session windows */
   WM.restoreSession();
 
-  /* REMOVED: the dead getSysOverrides() + empty forEach block that was here.
-     System overrides are applied lazily per-app inside WM.open(), so
-     iterating the override map at boot time served no purpose. */
+  /* 8. NEW — Play startup sound once the desktop is ready.
+        Wrapped in setTimeout so the AudioContext is created
+        after a user interaction has already occurred (the
+        login button click satisfies the autoplay policy). */
+  if (typeof KOSSound !== 'undefined') {
+    setTimeout(() => KOSSound.play('startup'), 400);
+  }
 
 })();
 

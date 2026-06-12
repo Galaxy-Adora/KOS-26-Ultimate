@@ -32,6 +32,162 @@ const KOSStudio = {
     else if (this._page === 'editor')    this._renderEditor();
     else if (this._page === 'syseditor') this._renderSysEditor();
   },
+/* ════════════════════════════════════════════════════════════
+   PASTE THESE THREE METHODS inside the KOSStudio object
+   ════════════════════════════════════════════════════════════ */
+
+  /* ── Sound snippet browser for the Studio sidebar ── */
+  _buildSoundBrowser() {
+    const presets = [
+      {
+        name: 'Confirm',
+        desc: 'Two-tone upward chime',
+        code: `KOSSound.register('myapp-confirm', () => {
+  KOSSound._rawTone({ freq: 660, dur: 0.10, vol: 0.12, type: 'sine' });
+  KOSSound._rawTone({ freq: 880, dur: 0.15, vol: 0.10, type: 'sine', start: 0.09 });
+});
+// Play it:
+KOSSound.play('myapp-confirm');`,
+      },
+      {
+        name: 'Alert',
+        desc: 'Harsh descending saw',
+        code: `KOSSound.register('myapp-alert', () => {
+  KOSSound._rawTone({ freq: 440, dur: 0.12, vol: 0.18, type: 'sawtooth' });
+  KOSSound._rawTone({ freq: 330, dur: 0.18, vol: 0.14, type: 'sawtooth', start: 0.10 });
+});
+KOSSound.play('myapp-alert');`,
+      },
+      {
+        name: 'Ding',
+        desc: 'Single bell tone',
+        code: `KOSSound.register('myapp-ding', () => {
+  KOSSound._rawTone({ freq: 1047, dur: 0.22, vol: 0.10, type: 'sine', decay: 0.16 });
+});
+KOSSound.play('myapp-ding');`,
+      },
+      {
+        name: 'Blip',
+        desc: 'Retro square blip',
+        code: `KOSSound.register('myapp-blip', () => {
+  KOSSound._rawTone({ freq: 1200, dur: 0.04, vol: 0.10, type: 'square', decay: 0.02 });
+});
+KOSSound.play('myapp-blip');`,
+      },
+      {
+        name: 'Whoosh',
+        desc: 'Descending glide',
+        code: `KOSSound.register('myapp-whoosh', () => {
+  KOSSound._rawTone({ freq: 800, freq2: 200, dur: 0.18, vol: 0.08, type: 'sine', decay: 0.12 });
+});
+KOSSound.play('myapp-whoosh');`,
+      },
+      {
+        name: 'Chime',
+        desc: 'Three-note ascending',
+        code: `KOSSound.register('myapp-chime', () => {
+  KOSSound._rawTone({ freq: 523, dur: 0.08, vol: 0.11, type: 'sine' });
+  KOSSound._rawTone({ freq: 659, dur: 0.08, vol: 0.09, type: 'sine', start: 0.08 });
+  KOSSound._rawTone({ freq: 784, dur: 0.16, vol: 0.08, type: 'sine', start: 0.15, decay: 0.12 });
+});
+KOSSound.play('myapp-chime');`,
+      },
+      {
+        name: 'Pop',
+        desc: 'Short bubble pop',
+        code: `KOSSound.register('myapp-pop', () => {
+  KOSSound._rawTone({ freq: 400, freq2: 600, dur: 0.06, vol: 0.10, type: 'sine', decay: 0.04 });
+});
+KOSSound.play('myapp-pop');`,
+      },
+      {
+        name: 'Error Buzz',
+        desc: 'Low warning buzz',
+        code: `KOSSound.register('myapp-buzz', () => {
+  KOSSound._rawTone({ freq: 150, dur: 0.20, vol: 0.18, type: 'sawtooth', decay: 0.14 });
+});
+KOSSound.play('myapp-buzz');`,
+      },
+    ];
+
+    return `
+      <div style="padding:6px 6px 0;margin-bottom:4px">
+        <div style="font-size:0.62rem;font-weight:700;letter-spacing:0.10em;
+                    text-transform:uppercase;color:rgba(255,255,255,0.30);
+                    padding:4px 4px 8px">
+          Sound Snippets
+        </div>
+        ${presets.map(p => `
+          <div class="studio-css-item">
+            <div class="studio-css-name">
+              <i class="fa-solid fa-music"
+                 style="color:#bf5af2;margin-right:5px;font-size:0.75rem"></i>
+              ${p.name}
+            </div>
+            <div class="studio-css-preview"
+                 style="color:rgba(255,255,255,0.22);font-size:0.60rem">
+              ${p.desc}
+            </div>
+            <div style="display:flex;gap:5px;margin-top:4px">
+              <button class="studio-copy-btn" style="flex:1"
+                      title="Paste into JS tab"
+                      onclick='KOSStudio._pasteSound(${JSON.stringify(p.code)})'>
+                <i class="fa-solid fa-copy"></i> Paste
+              </button>
+              <button class="studio-copy-btn"
+                      style="background:rgba(191,90,242,0.20);
+                             border-color:rgba(191,90,242,0.35)"
+                      title="Preview this sound"
+                      onclick='KOSStudio._previewSound(${JSON.stringify(p.code)})'>
+                <i class="fa-solid fa-play"></i>
+              </button>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  },
+
+  /* ── Paste a sound snippet into the JS textarea ── */
+  _pasteSound(code) {
+    /* Make sure the JS tab is visible first */
+    const jsEl = document.getElementById('studio-code-js');
+    if (!jsEl) {
+      showToast('Switch to the JS tab first!');
+      return;
+    }
+    const s = jsEl.selectionStart;
+    jsEl.value =
+      jsEl.value.slice(0, s) + '\n\n' + code + '\n\n' +
+      jsEl.value.slice(jsEl.selectionEnd);
+    jsEl.selectionStart = jsEl.selectionEnd = s + code.length + 4;
+    jsEl.focus();
+    this.saveCode();
+    window.KOSSound?.play('save');
+    showToast('Sound snippet pasted into JS tab!');
+  },
+
+  /* ── Temporarily register and play a preview sound ── */
+  _previewSound(code) {
+    if (!window.KOSSound) {
+      showToast('KOSSound is not loaded.');
+      return;
+    }
+    try {
+      /* eslint-disable no-new-func */
+      new Function(code)();
+      /* Extract the registered ID from the code string */
+      const match = code.match(/KOSSound\.register\(['"]([^'"]+)['"]/);
+      if (match) {
+        const id = match[1];
+        KOSSound.play(id);
+        /* Clean up after 3 seconds */
+        setTimeout(() => KOSSound.unregister(id), 3000);
+      }
+    } catch (e) {
+      showToast('Preview error: ' + e.message);
+      window.KOSSound?.play('error');
+    }
+  },
+
 
   /* ── Home ── */
   _renderHome() {
@@ -219,9 +375,12 @@ const KOSStudio = {
         </div>
         <div class="studio-editor-body">
           <div class="studio-sidebar">
-            <div class="studio-sidebar-title">System CSS Snippets</div>
-            <div class="studio-css-browser">${this._buildCssBrowser()}</div>
-          </div>
+    <div class="studio-sidebar-title">System CSS</div>
+    <div class="studio-css-browser">${this._buildCssBrowser()}</div>
+    <div class="studio-css-browser" style="border-top:1px solid rgba(255,255,255,0.07);margin-top:4px;padding-top:4px">
+      ${this._buildSoundBrowser()}
+    </div>
+  </div>
           <div class="studio-code-area">
             <div class="studio-tabs">
               <button class="studio-tab" data-tab="sys-html" onclick="KOSStudio.switchSysTab('sys-html')">Live DOM</button>
@@ -405,11 +564,14 @@ const KOSStudio = {
   /* ── Misc Editor helpers ── */
   switchTab(tab) {
     this._activeTab = tab;
-    /* Cache collections the first time a tab is clicked */
     if (!this._appTabs)      this._appTabs      = document.querySelectorAll('.studio-tab');
     if (!this._appTextareas) this._appTextareas  = document.querySelectorAll('.studio-textarea');
     this._appTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    this._appTextareas.forEach(ta => ta.classList.toggle('studio-hidden', !ta.id.endsWith(tab)));
+    this._appTextareas.forEach(ta =>
+      ta.classList.toggle('studio-hidden', !ta.id.endsWith(tab))
+    );
+    /* Play a subtle click on tab switch */
+    window.KOSSound?.play('click');
   },
 
   saveCode() {

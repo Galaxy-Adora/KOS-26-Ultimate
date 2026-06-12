@@ -268,7 +268,17 @@ window.KOSModal = (() => {
       card.appendChild(bodyEl);
       card.appendChild(_sep());
 
-      const dismiss = () => { _close(id); resolve(); };
+      /* ════════════════════════════════════════════════
+   PATCH 1 — alert()
+   Find the dismiss function inside alert():
+     const dismiss = () => { _close(id); resolve(); };
+   Replace with:
+   ════════════════════════════════════════════════ */
+const dismiss = () => {
+  window.KOSSound?.play('click');   /* NEW */
+  _close(id);
+  resolve();
+};
 
       card.appendChild(
         _buildButtonRow([
@@ -328,8 +338,28 @@ window.KOSModal = (() => {
       card.appendChild(bodyEl);
       card.appendChild(_sep());
 
-      const cancel  = () => { _close(id); resolve(false); };
-      const confirm = () => { _close(id); resolve(true);  };
+      /* ════════════════════════════════════════════════
+   PATCH 2 — confirm()
+   Find the cancel and confirm closures inside confirm():
+     const cancel  = () => { _close(id); resolve(false); };
+     const confirm = () => { _close(id); resolve(true);  };
+   Replace with:
+   ════════════════════════════════════════════════ */
+const cancel = () => {
+  window.KOSSound?.play('click');   /* NEW */
+  _close(id);
+  resolve(false);
+};
+const confirmFn = () => {
+  /* Play destructive sound for destructive confirms, success otherwise */
+  if (opts.destructive) {
+    window.KOSSound?.play('delete');  /* NEW */
+  } else {
+    window.KOSSound?.play('success'); /* NEW */
+  }
+  _close(id);
+  resolve(true);
+};
 
       const confirmCls = opts.destructive ? 'btn-destructive' : 'btn-primary';
 
@@ -546,8 +576,14 @@ window.KOSModal = (() => {
        message  string
        variant  string (default 'system')
   ─────────────────────────────────────────────────────────── */
-  function loading(opts = {}) {
-    const id        = _nextId++;
+  /* ════════════════════════════════════════════════
+   PATCH 5 — loading() spinner
+   Find loading() and add ONE line at the start:
+   ════════════════════════════════════════════════ */
+function loading(opts = {}) {
+  window.KOSSound?.play('notify');  /* NEW — audible cue that work has started */
+  const id        = _nextId++;
+
     const overlayEl = _createOverlay();
     const card      = _el('div', 'kos-modal-card');
 
@@ -790,29 +826,43 @@ window.KOSModal = (() => {
    *
    * @param {{ title?: string, message?: string, detail?: string }} opts
    */
-  function error(opts = {}) {
-    return alert({
-      title   : opts.title   || 'An Error Occurred',
-      message : opts.message || 'Something went wrong. Please try again.',
-      detail  : opts.detail,
-      variant : 'error',
-      okLabel : 'OK',
-    });
-  }
+  /* ════════════════════════════════════════════════
+   PATCH 3 — error() system preset
+   Find the error() function:
+     function error(opts = {}) {
+       return alert({ ... });
+     }
+   Replace with:
+   ════════════════════════════════════════════════ */
+function error(opts = {}) {
+  window.KOSSound?.play('error');   /* NEW — plays immediately, not on dismiss */
+  return alert({
+    title   : opts.title   || 'An Error Occurred',
+    message : opts.message || 'Something went wrong. Please try again.',
+    detail  : opts.detail,
+    variant : 'error',
+    okLabel : 'OK',
+  });
+}
 
   /**
    * Success confirmation — auto-closes after 2.5 s by default.
    * Returns Promise<void>.
    */
-  function success(opts = {}) {
-    return alert({
-      title     : opts.title   || 'Done',
-      message   : opts.message || '',
-      variant   : 'success',
-      okLabel   : opts.okLabel || 'OK',
-      autoClose : opts.autoClose ?? 2500,
-    });
-  }
+  /* ════════════════════════════════════════════════
+   PATCH 4 — success() system preset
+   Find success() and replace with:
+   ════════════════════════════════════════════════ */
+function success(opts = {}) {
+  window.KOSSound?.play('success'); /* NEW — plays immediately */
+  return alert({
+    title     : opts.title   || 'Done',
+    message   : opts.message || '',
+    variant   : 'success',
+    okLabel   : opts.okLabel || 'OK',
+    autoClose : opts.autoClose ?? 2500,
+  });
+}
 
   /**
    * Delete confirmation with standardised wording.

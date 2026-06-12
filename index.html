@@ -318,10 +318,12 @@
         <span class="qs-tile-icon"><i class="fa-solid fa-droplet"></i></span>
         <span class="qs-tile-label">Glass UI</span>
       </button>
-      <button class="qs-tile" disabled>
-        <span class="qs-tile-icon"><i class="fa-solid fa-plus"></i></span>
-        <span class="qs-tile-label">Coming Soon</span>
-      </button>
+      <button class="qs-tile" id="qs-tile-sound" onclick="qsToggleSound()">
+  <span class="qs-tile-icon">
+    <i class="fa-solid fa-volume-high" id="qs-sound-icon"></i>
+  </span>
+  <span class="qs-tile-label">Sound</span>
+</button>
       <button class="qs-tile" disabled>
         <span class="qs-tile-icon"><i class="fa-solid fa-plus"></i></span>
         <span class="qs-tile-label">Coming Soon</span>
@@ -514,13 +516,26 @@
         notifEl.style.top = _PANEL_TOP + 'px';
       }
     }
-    /* ── Tile state sync ── */
-    function qsTileSyncState() {
-      const isDark  = document.body.classList.contains('dark');
-      const isGlass = !document.body.classList.contains('no-glass');
-      document.getElementById('qs-tile-theme')?.classList.toggle('qs-on', isDark);
-      document.getElementById('qs-tile-glass')?.classList.toggle('qs-on', isGlass);
-    }
+    /* ════════════════════════════════════════════════
+   PATCH 2 — Replace qsTileSyncState() entirely
+   ════════════════════════════════════════════════ */
+function qsTileSyncState() {
+  const isDark  = document.body.classList.contains('dark');
+  const isGlass = !document.body.classList.contains('no-glass');
+  const sndOn   = window.KOSSound ? !KOSSound.isMuted() : true; /* NEW */
+
+  document.getElementById('qs-tile-theme')?.classList.toggle('qs-on', isDark);
+  document.getElementById('qs-tile-glass')?.classList.toggle('qs-on', isGlass);
+  document.getElementById('qs-tile-sound')?.classList.toggle('qs-on', sndOn); /* NEW */
+
+  /* NEW — sync sound icon */
+  const sndIcon = document.getElementById('qs-sound-icon');
+  if (sndIcon) {
+    sndIcon.className = sndOn
+      ? 'fa-solid fa-volume-high'
+      : 'fa-solid fa-volume-xmark';
+  }
+}
     function qsToggleTheme() {
       if (typeof toggleTheme === 'function') toggleTheme();
       setTimeout(qsTileSyncState, 40);
@@ -539,23 +554,55 @@
              v < 40   ? 'fa-solid fa-volume-low'   :
                         'fa-solid fa-volume-high';
     }
+/* ════════════════════════════════════════════════
+   PATCH 3 — Add qsToggleSound() as a NEW function
+   (paste anywhere inside the inline <script> block)
+   ════════════════════════════════════════════════ */
+function qsToggleSound() {
+  if (!window.KOSSound) return;
+  const nowMuted = KOSSound.isMuted();
+  KOSSound.setMuted(!nowMuted);
+  const tile    = document.getElementById('qs-tile-sound');
+  const icon    = document.getElementById('qs-sound-icon');
+  tile?.classList.toggle('qs-on', nowMuted);  /* was muted → now on */
+  if (icon) {
+    icon.className = nowMuted
+      ? 'fa-solid fa-volume-high'
+      : 'fa-solid fa-volume-xmark';
+  }
+  /* Only play a sound when un-muting */
+  if (nowMuted) KOSSound.play('toggle');
+}
+  /* ════════════════════════════════════════════════
+   PATCH 1 — Replace qsSetVolume() entirely
+   ════════════════════════════════════════════════ */
+function qsSetVolume(val) {
+  const v  = parseInt(val, 10);
+  if (v > 0) _lastVol = v;
+  _muted = v === 0;
+  const frac = v / 100;
 
-    function qsSetVolume(val) {
-      const v  = parseInt(val, 10);
-      if (v > 0) _lastVol = v;
-      _muted = v === 0;
-      const frac = v / 100;
-      document.querySelectorAll('audio, video').forEach(el => { el.volume = frac; });
-      // Update master slider fill
-      const sl = document.getElementById('qs-vol-slider');
-      if (sl) sl.style.setProperty('--qs-fill', v + '%');
-      document.getElementById('qs-vol-val').textContent  = v;
-      // Update icons
-      const cls = _volIconClass(v);
-      document.getElementById('qs-vol-icon')?.setAttribute('class', cls);
-      document.getElementById('qs-vol-icon-tb')?.setAttribute('class', cls);
-    }
+  /* Control all media elements */
+  document.querySelectorAll('audio, video').forEach(el => { el.volume = frac; });
 
+  /* NEW — Control KOSSound engine */
+  if (window.KOSSound) {
+    KOSSound.setVolume(frac);
+    KOSSound.setMuted(v === 0);
+  }
+
+  /* Update slider fill */
+  const sl = document.getElementById('qs-vol-slider');
+  if (sl) sl.style.setProperty('--qs-fill', v + '%');
+  document.getElementById('qs-vol-val').textContent = v;
+
+  /* Update icons */
+  const cls = v === 0  ? 'fa-solid fa-volume-xmark' :
+              v < 40   ? 'fa-solid fa-volume-low'   :
+                         'fa-solid fa-volume-high';
+  document.getElementById('qs-vol-icon')?.setAttribute('class', cls);
+  document.getElementById('qs-vol-icon-tb')?.setAttribute('class', cls);
+}
     function qsToggleMute() {
       const sl = document.getElementById('qs-vol-slider');
       if (!sl) return;
@@ -740,6 +787,7 @@ function _syncBrightness() {
 <script defer src="apps/app-store.js"></script>
   <script defer src="sys-manifest.js"></script>
   <script defer src="kos-kernel.js"></script>
+<script defer src="kos-sound.js"></script>
   <script defer src="kos-fs.js"></script>
   <script defer src="kos-fs-picker.js"></script>
   <script defer src="kos-contextmenu.js"></script>
