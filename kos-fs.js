@@ -25,6 +25,14 @@ window.KOSFS = (() => {
   const STORE       = 'files';
   const MIGRATE_KEY = 'kos-fs-v1-migrated';
 
+  /* Storage cap (IndexedDB "disk size") — user-adjustable in Setup/Settings.
+     Stored in localStorage as bytes. Min 256MB enforced everywhere. */
+  const CAP_KEY      = 'kos-fs-storage-cap';
+  const MB           = 1024 * 1024;
+  const MIN_CAP      = 256 * MB;          // 256 MB hard minimum
+  const DEFAULT_CAP  = 2048 * MB;         // 2 GB default
+  const WARN_RATIO   = 0.9;               // warn at 90% usage
+
   const TYPES = Object.freeze({
     IMAGE    : 'image',
     VIDEO    : 'video',
@@ -283,6 +291,61 @@ window.KOSFS = (() => {
     KOSBus.dispatch('kos:fs-reset-complete', { triggeredBy: appId });
   }
 
+  /* ═══════════════════════════════════════════════════════════
+     §7b  STORAGE CAP ("disk size") MANAGEMENT
+  ═══════════════════════════════════════════════════════════ */
+
+  function getCap() {
+    try {
+      const raw = localStorage.getItem(CAP_KEY);
+      const n   = raw !== null ? parseInt(raw, 10) : DEFAULT_CAP;
+      return Number.isFinite(n) && n >= MIN_CAP ? n : DEFAULT_CAP;
+    } catch (_) {
+      return DEFAULT_CAP;
+    }
+  }
+
+  function setCap(bytes) {
+    const n = Math.max(MIN_CAP, Math.floor(Number(bytes) || 0));
+    try { localStorage.setItem(CAP_KEY, String(n)); } catch (_) {}
+    KOSBus.dispatch('kos:fs-cap-changed', { cap: n });
+    return n;
+  }
+
+  async function getUsage() {
+    const stats = await _systemStats();
+    const cap   = getCap();
+    return {
+      used      : stats.totalSize,
+      cap,
+      free      : Math.max(0, cap - stats.totalSize),
+      ratio     : cap > 0 ? stats.totalSize / cap : 0,
+      nearFull  : cap > 0 && (stats.totalSize / cap) >= WARN_RATIO,
+      full      : stats.totalSize >= cap,
+    };
+  }
+
+  async function _checkQuota(incomingSize) {
+    const stats = await _systemStats();
+    const cap   = getCap();
+    if (stats.totalSize + incomingSize > cap) {
+      const err = new DOMException(
+        `[KOSFS] Storage cap exceeded (${formatSize(stats.totalSize)} / ${formatSize(cap)}). ` +
+        `Free up space or increase the storage limit in Settings.`,
+        'QuotaExceededError'
+      );
+      KOSBus.dispatch('kos:fs-quota-exceeded', {
+        used: stats.totalSize, incoming: incomingSize, cap
+      });
+      throw err;
+    }
+    if ((stats.totalSize + incomingSize) / cap >= WARN_RATIO) {
+      KOSBus.dispatch('kos:fs-quota-warning', {
+        used: stats.totalSize + incomingSize, cap
+      });
+    }
+  }
+
   async function write(appId, fileData, meta = {}) {
     await ready;
     let data, mimeType, name, size;
@@ -313,6 +376,8 @@ window.KOSFS = (() => {
 
     const fileType = meta.type ?? inferType(mimeType);
     _guard(appId, fileType);
+
+    await _checkQuota(size);
 
     const id = await _insert({
       name,
@@ -523,6 +588,13 @@ window.KOSFS = (() => {
     formatSize,
     typeIcon,
     _systemStats,
+
+    // Storage cap ("disk size")
+    getCap,
+    setCap,
+    getUsage,
+    MIN_CAP,
+    DEFAULT_CAP,
   });
 
 })();

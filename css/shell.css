@@ -704,6 +704,36 @@ body.dark .login-sys-btn:hover {
   padding-right: 148px;          /* reserve room for the floating win-controls */
 }
 
+/* ── Snapped: same full-width flattened navbar as maximized,
+   but reserve space on whichever side(s) host snap controls
+   instead of always the right edge. ── */
+.topbar.topbar-snap-left,
+.topbar.topbar-snap-right {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  border-radius: 0;
+}
+
+/* Left-snapped app → its controls live at the far-left of the topbar,
+   so push the topbar's own left content rightward to make room. */
+.topbar.topbar-snap-left {
+  padding-left: 118px;
+}
+
+/* Right-snapped app → its controls live at the far-right of the topbar,
+   so reserve space on the right (matches maximized reservation). */
+.topbar.topbar-snap-right {
+  padding-right: 118px;
+}
+
+/* Both sides snapped at once → reserve on both edges simultaneously */
+.topbar.topbar-snap-left.topbar-snap-right {
+  padding-left: 118px;
+  padding-right: 118px;
+}
+
 .topbar .left { display: flex; align-items: center; gap: 4px; }
 
 /* System name fades when swapping to/from app name */

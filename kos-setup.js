@@ -107,23 +107,33 @@
     ];
   })();
 
-  /* Merge with STOCK_WALLPAPERS if available, else build fallback list */
+  /* Merge with STOCK_WALLPAPERS if available, else build fallback list.
+     STOCK_WALLPAPERS entries look like:
+       { label: 'Deep Space', value: 'linear-gradient(135deg,#1a1a2e 0%,#16213e 45%,#0f3460 100%)' }
+     or for the default entry:
+       { label: 'Default', value: "url('documents/dfw.jpg') center/cover no-repeat" }
+     `value` is a full CSS `background` shorthand — either a url(...) reference
+     (the default photo wallpaper) or a linear-gradient (everything else). */
   const _WALLPAPERS = (() => {
     if (typeof STOCK_WALLPAPERS !== 'undefined' && Array.isArray(STOCK_WALLPAPERS) && STOCK_WALLPAPERS.length) {
-      return STOCK_WALLPAPERS.map((w, i) => ({
-        key  : i === 0 ? 'default' : 'stock-' + i,
-        label: w.label || `Wallpaper ${i + 1}`,
-        url  : w.url   || w.thumb || (i === 0 ? 'documents/dfw.jpg' : null),
-        css  : w.css   || w.gradient || null,
-      }));
+      return STOCK_WALLPAPERS.map((w, i) => {
+        const value = w.value || '';
+        const urlMatch = value.match(/url\(\s*['"]?(.*?)['"]?\s*\)/i);
+        return {
+          key  : i === 0 ? 'default' : 'stock-' + i,
+          label: w.label || `Wallpaper ${i + 1}`,
+          url  : urlMatch ? urlMatch[1] : null,
+          css  : urlMatch ? null : (value || null),
+        };
+      });
     }
     return [
       { key:'default', label:'Default',  url:'documents/dfw.jpg',  css:null },
-      { key:'stock-1', label:'Aurora',   url:'documents/wp2.jpg',  css:'linear-gradient(135deg,#0f2027,#2c5364)' },
-      { key:'stock-2', label:'Sunset',   url:'documents/wp3.jpg',  css:'linear-gradient(135deg,#f7971e,#ffd200)' },
-      { key:'stock-3', label:'Forest',   url:'documents/wp4.jpg',  css:'linear-gradient(135deg,#134e5e,#71b280)' },
-      { key:'stock-4', label:'Midnight', url:'documents/wp5.jpg',  css:'linear-gradient(135deg,#0f0c29,#302b63)' },
-      { key:'stock-5', label:'Rose',     url:'documents/wp6.jpg',  css:'linear-gradient(135deg,#c9d6ff,#e2e2e2)' },
+      { key:'stock-1', label:'Aurora',   url:null,  css:'linear-gradient(135deg,#0f2027,#2c5364)' },
+      { key:'stock-2', label:'Sunset',   url:null,  css:'linear-gradient(135deg,#f7971e,#ffd200)' },
+      { key:'stock-3', label:'Forest',   url:null,  css:'linear-gradient(135deg,#134e5e,#71b280)' },
+      { key:'stock-4', label:'Midnight', url:null,  css:'linear-gradient(135deg,#0f0c29,#302b63)' },
+      { key:'stock-5', label:'Rose',     url:null,  css:'linear-gradient(135deg,#c9d6ff,#e2e2e2)' },
     ];
   })();
 
@@ -146,7 +156,7 @@
 
     _el   : null,          // #screen-setup DOM element
     _step : 0,
-    _TOTAL: 6,             // last step index (steps 0 – 6)
+    _TOTAL: 8,             // last step index (steps 0 – 8)
 
     /* Collected settings before applying on finish */
     _d: {
@@ -158,6 +168,10 @@
       avatarSrc: null,
       wallpaper: 'default',
       palette  : 'default',
+      soundEnabled: true,
+      soundVolume : 0.6,
+      soundTheme  : 'default',
+      storageCap  : 2048,     // MB
     },
 
     /* ── 1. Entry point called by the boot hook ── */
@@ -165,6 +179,16 @@
       /* Snapshot current body state so the wizard reflects reality */
       this._d.isDark  = document.body.classList.contains('dark');
       this._d.isGlass = !document.body.classList.contains('no-glass');
+
+      /* Snapshot current sound + storage settings */
+      if (typeof KOSSound !== 'undefined') {
+        this._d.soundEnabled = !KOSSound.isMuted();
+        this._d.soundVolume  = KOSSound.getVolume();
+        this._d.soundTheme   = KOSSound.getTheme();
+      }
+      if (typeof KOSFS !== 'undefined' && typeof KOSFS.getCap === 'function') {
+        this._d.storageCap = Math.round(KOSFS.getCap() / (1024 * 1024));
+      }
 
       /* Build the screen element and inject into body */
       this._el = document.createElement('div');
@@ -231,6 +255,8 @@
         '_stepAppearance',
         '_stepWallpaper',
         '_stepIcons',
+        '_stepSound',
+        '_stepStorage',
         '_stepDone',
       ];
       el.innerHTML = this[RENDERERS[this._step]]?.() ?? '';
@@ -244,7 +270,7 @@
 
       const isFirst = this._step === 0;
       const isDone  = this._step === this._TOTAL;
-      const isLast  = this._step === this._TOTAL - 1;   // icons → finish
+      const isLast  = this._step === this._TOTAL - 1;   // storage → finish
 
       const backHTML = (!isFirst && !isDone)
         ? `<button class="kos-setup-btn kos-setup-btn-ghost" id="ks-back">
@@ -263,8 +289,8 @@
 
       el.innerHTML = backHTML + nextHTML;
 
-      document.getElementById('ks-back')?.addEventListener('click', () => this._prev());
-      document.getElementById('ks-next')?.addEventListener('click', () => this._next());
+      document.getElementById('ks-back')?.addEventListener('click', () => { this._snd('click'); this._prev(); });
+      document.getElementById('ks-next')?.addEventListener('click', () => { this._snd('click'); this._next(); });
     },
 
     /* ══════════════════════════════════════════════════════════
@@ -454,12 +480,21 @@
           <div class="kos-setup-wp-grid" id="ks-wp-grid">
             ${_WALLPAPERS.map(w => {
               const fallback = w.css || '#2c2c2e';
+              const isGradient = !!w.css;
+              /* Use background-color/background-image separately so an
+                 image probe overwriting background-image can never wipe
+                 out a gradient fallback's color, and so a gradient
+                 fallback is never itself overwritten by a stale value. */
+              const bgStyle = isGradient
+                ? `background-color:#2c2c2e;background-image:${fallback};background-size:cover;background-position:center`
+                : `background-color:#2c2c2e;background-image:none;background-size:cover;background-position:center`;
               return `
               <div class="kos-setup-wp-opt ${this._d.wallpaper === w.key ? 'selected' : ''}"
                    data-key="${w.key}" title="${w.label}">
                 <div class="kos-setup-wp-thumb"
-                     style="background:${fallback};background-size:cover;background-position:center"
-                     data-img-url="${w.url || ''}"></div>
+                     style="${bgStyle}"
+                     data-img-url="${w.url || ''}"
+                     data-fallback="${this._escAttr(fallback)}"></div>
                 <span class="kos-setup-wp-label">${w.label}</span>
               </div>`;
             }).join('')}
@@ -497,7 +532,83 @@
         </div>`;
     },
 
-    /* Step 6 — Done */
+    /* Step 6 — Sound */
+    _stepSound() {
+      const en     = this._d.soundEnabled;
+      const vol    = this._d.soundVolume;
+      const theme  = this._d.soundTheme;
+      const themes = (typeof KOSSound !== 'undefined' ? KOSSound.themes : ['default','retro','soft','silent'])
+                       .filter(t => t !== 'silent');
+      const labels = { default:'Default', retro:'Retro', soft:'Soft' };
+
+      return `
+        <div class="kos-step">
+          <h2 class="kos-setup-h2">System Sounds</h2>
+          <p class="kos-setup-sub">Choose how KOS sounds when you use it.</p>
+
+          <div class="kos-setup-toggle-row">
+            <div class="kos-setup-tgl-label">
+              <i class="fa-solid fa-volume-high"></i>
+              System Sounds
+              <span class="kos-setup-tgl-sub">
+                UI sounds for clicks, windows, alerts and notifications
+              </span>
+            </div>
+            <div class="toggle-switch ${en ? 'on' : ''}" id="ks-sound-toggle">
+              <div class="toggle-knob"></div>
+            </div>
+          </div>
+
+          <div class="kos-setup-field" id="ks-sound-vol-wrap" style="${en ? '' : 'opacity:.4;pointer-events:none'}">
+            <label class="kos-setup-label">Volume</label>
+            <input type="range" id="ks-sound-volume" min="0" max="1" step="0.05"
+                   value="${vol}" style="width:100%">
+          </div>
+
+          <div class="kos-setup-field" id="ks-sound-theme-wrap" style="${en ? '' : 'opacity:.4;pointer-events:none'}">
+            <div class="kos-setup-label" style="margin-bottom:10px">Sound Theme</div>
+            <div class="kos-setup-appear-row" id="ks-sound-theme-grid">
+              ${themes.map(t => `
+                <div class="kos-setup-theme-opt ${theme === t ? 'selected' : ''}"
+                     data-theme="${t}" role="button">
+                  <div class="kos-theme-preview" style="display:flex;align-items:center;justify-content:center">
+                    <i class="fa-solid fa-music" style="font-size:1.4rem;opacity:.65"></i>
+                  </div>
+                  <span>${labels[t] || t}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+        </div>`;
+    },
+
+    /* Step 7 — Storage */
+    _stepStorage() {
+      const cap   = this._d.storageCap;            // MB
+      const minMB = (typeof KOSFS !== 'undefined' ? KOSFS.MIN_CAP : 256 * 1024 * 1024) / (1024 * 1024);
+      const maxMB = 16384; // 16 GB slider ceiling
+      return `
+        <div class="kos-step">
+          <h2 class="kos-setup-h2">Storage</h2>
+          <p class="kos-setup-sub">
+            Set how much browser storage KOS is allowed to use for your files,
+            photos, videos and documents — like sizing a virtual disk.
+          </p>
+
+          <div class="kos-setup-field">
+            <label class="kos-setup-label">
+              Storage Limit
+              <span class="kos-setup-optional" id="ks-storage-value">${KOSSetup._fmtMB(cap)}</span>
+            </label>
+            <input type="range" id="ks-storage-cap" min="${minMB}" max="${maxMB}" step="64"
+                   value="${cap}" style="width:100%">
+            <div class="kos-setup-field-hint">
+              Minimum ${KOSSetup._fmtMB(minMB)}. You can change this later in Settings.
+            </div>
+          </div>
+        </div>`;
+    },
+
+    /* Step 8 — Done */
     _stepDone() {
       const name = this._d.username.trim() || 'there';
       return `
@@ -520,6 +631,13 @@
     /* ══════════════════════════════════════════════════════════
        EVENT WIRING (called after every _updateBody)
        ══════════════════════════════════════════════════════════ */
+    /* Safe sound trigger — no-ops if KOSSound unavailable or muted in setup */
+    _snd(id) {
+      if (typeof KOSSound !== 'undefined') {
+        try { KOSSound.play(id); } catch (_) {}
+      }
+    },
+
     _wire() {
       const s = this._step;
 
@@ -531,6 +649,7 @@
           box.classList.toggle('checked', on);
           const next = document.getElementById('ks-next');
           if (next) next.disabled = !on;
+          this._snd('toggle');
         });
       }
 
@@ -555,6 +674,7 @@
                   .forEach(el => el.classList.remove('selected'));
           document.getElementById('ks-theme-light')?.classList.add('selected');
           document.body.classList.remove('dark');
+          this._snd('click');
         });
         document.getElementById('ks-theme-dark')?.addEventListener('click', () => {
           this._d.isDark = true;
@@ -562,6 +682,7 @@
                   .forEach(el => el.classList.remove('selected'));
           document.getElementById('ks-theme-dark')?.classList.add('selected');
           document.body.classList.add('dark');
+          this._snd('click');
         });
 
         const glassToggle = document.getElementById('ks-glass-toggle');
@@ -570,6 +691,7 @@
           this.classList.toggle('on', on);
           KOSSetup._d.isGlass = on;
           document.body.classList.toggle('no-glass', !on);
+          KOSSetup._snd('toggle');
         });
 
         document.querySelectorAll('#ks-avatar-grid .kos-setup-avatar-opt[data-src]')
@@ -578,6 +700,7 @@
                           .forEach(o => o.classList.remove('selected'));
                   opt.classList.add('selected');
                   this._d.avatarSrc = opt.dataset.src;
+                  this._snd('click');
                 }));
 
         document.getElementById('ks-avatar-upload')
@@ -603,6 +726,7 @@
                           .forEach(o => o.classList.remove('selected'));
                   opt.classList.add('selected');
                   this._d.wallpaper = opt.dataset.key;
+                  this._snd('click');
                 }));
 
         document.querySelectorAll('#ks-wp-grid .kos-setup-wp-thumb[data-img-url]')
@@ -612,6 +736,11 @@
                   const probe = new Image();
                   probe.onload = () => {
                     thumb.style.backgroundImage = `url('${url}')`;
+                  };
+                  probe.onerror = () => {
+                    /* Image missing — keep/restore the gradient or solid fallback */
+                    const fb = thumb.dataset.fallback || '#2c2c2e';
+                    thumb.style.backgroundImage = fb.startsWith('#') ? 'none' : fb;
                   };
                   probe.src = url;
                 });
@@ -627,10 +756,58 @@
                   if (typeof applyIconPalette === 'function') {
                     applyIconPalette(opt.dataset.id);
                   }
+                  this._snd('click');
                 }));
       }
 
       if (s === 6) {
+        const sndToggle = document.getElementById('ks-sound-toggle');
+        const volWrap   = document.getElementById('ks-sound-vol-wrap');
+        const themeWrap = document.getElementById('ks-sound-theme-wrap');
+        const volInput  = document.getElementById('ks-sound-volume');
+
+        sndToggle?.addEventListener('click', function () {
+          const on = !this.classList.contains('on');
+          this.classList.toggle('on', on);
+          KOSSetup._d.soundEnabled = on;
+          if (typeof KOSSound !== 'undefined') KOSSound.setMuted(!on);
+
+          if (volWrap)   volWrap.style.cssText   = on ? '' : 'opacity:.4;pointer-events:none';
+          if (themeWrap) themeWrap.style.cssText = on ? '' : 'opacity:.4;pointer-events:none';
+
+          if (on) KOSSetup._snd('toggle');
+        });
+
+        volInput?.addEventListener('input', e => {
+          const v = parseFloat(e.target.value);
+          this._d.soundVolume = v;
+          if (typeof KOSSound !== 'undefined') KOSSound.setVolume(v);
+        });
+        volInput?.addEventListener('change', () => this._snd('click'));
+
+        document.querySelectorAll('#ks-sound-theme-grid .kos-setup-theme-opt')
+                .forEach(opt => opt.addEventListener('click', () => {
+                  document.querySelectorAll('#ks-sound-theme-grid .kos-setup-theme-opt')
+                          .forEach(o => o.classList.remove('selected'));
+                  opt.classList.add('selected');
+                  const themeId = opt.dataset.theme;
+                  this._d.soundTheme = themeId;
+                  if (typeof KOSSound !== 'undefined') KOSSound.setTheme(themeId);
+                }));
+      }
+
+      if (s === 7) {
+        const slider = document.getElementById('ks-storage-cap');
+        const valueEl = document.getElementById('ks-storage-value');
+        slider?.addEventListener('input', e => {
+          const mb = parseInt(e.target.value, 10);
+          this._d.storageCap = mb;
+          if (valueEl) valueEl.textContent = this._fmtMB(mb);
+        });
+        slider?.addEventListener('change', () => this._snd('click'));
+      }
+
+      if (s === 8) {
         document.getElementById('ks-start')
                 ?.addEventListener('click', () => this._launch());
       }
@@ -642,7 +819,7 @@
 
     _next() {
       if (!this._validate()) return;
-      if (this._step === 5) this._applyAll();
+      if (this._step === this._TOTAL - 1) this._applyAll();
       this._go(this._step + 1);
     },
 
@@ -749,7 +926,21 @@
       KOSUser.setUsername(d.username.trim() || 'Developer')
              .catch(e => console.warn('[KOSSetup] Username save failed:', e));
 
-      /* 8. Mark setup complete */
+      /* 8. Sound settings */
+      if (typeof KOSSound !== 'undefined') {
+        KOSSound.setMuted(!d.soundEnabled);
+        KOSSound.setVolume(d.soundVolume);
+        KOSSound.setTheme(d.soundTheme);
+      }
+
+      /* 9. Storage cap ("disk size") */
+      if (typeof KOSFS !== 'undefined' && typeof KOSFS.setCap === 'function') {
+        KOSFS.setCap(d.storageCap * 1024 * 1024);
+      } else {
+        localStorage.setItem('kos-fs-storage-cap', String(Math.max(256, d.storageCap) * 1024 * 1024));
+      }
+
+      /* 10. Mark setup complete */
       localStorage.setItem(_SETUP_KEY, '1');
     },
 
@@ -758,6 +949,7 @@
        ══════════════════════════════════════════════════════════ */
 
     _launch() {
+      this._snd('success');
       const card = document.getElementById('kos-setup-card');
       if (card) {
         card.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
@@ -768,32 +960,40 @@
       setTimeout(() => {
         this._el.classList.remove('active');
 
-        /* If no password was provided, verify and seal the auto-login flag state */
-        if (!this._d.password) {
-          localStorage.setItem('kos-no-password', 'true');
-        }
+        if (this._d.password) {
+          /* Password set — show the login screen and let the user sign in
+             with the password they just created. */
+          const loginEl = document.getElementById('screen-login');
+          if (loginEl) {
+            document.querySelectorAll('.screen')
+                    .forEach(s => s.classList.remove('active'));
+            loginEl.classList.add('active');
 
-        const loginEl = document.getElementById('screen-login');
-        if (loginEl) {
-          document.querySelectorAll('.screen')
-                  .forEach(s => s.classList.remove('active'));
-          loginEl.classList.add('active');
+            const pwBox = loginEl.querySelector('input[type="password"]');
+            if (pwBox) pwBox.value = this._d.password;
 
-          const pwBox = loginEl.querySelector('input[type="password"]');
-          if (pwBox) pwBox.value = this._d.password || '';
-
-          setTimeout(() => {
-            if (typeof attemptLogin === 'function') {
-              attemptLogin();
-            } else {
-              loginEl.querySelector('.pill-btn.signin')?.click();
-            }
-          }, 350);
-
+            setTimeout(() => {
+              if (typeof attemptLogin === 'function') {
+                attemptLogin();
+              } else {
+                loginEl.querySelector('.pill-btn.signin')?.click();
+              }
+            }, 350);
+          }
         } else {
+          /* No password — auto-login flag was already set in _applyAll(),
+             so go straight to the desktop (matches kernel boot behaviour
+             for kos-no-password === 'true'), bypassing the login screen
+             entirely instead of submitting an empty password that would
+             fail against the kernel's default password. */
           document.querySelectorAll('.screen')
                   .forEach(s => s.classList.remove('active'));
+          const desktopEl = document.getElementById('screen-desktop');
+          desktopEl?.classList.add('active');
           try { window.WM?.restoreSession?.(); } catch (_) {}
+          if (typeof KOSBus !== 'undefined') {
+            KOSBus.dispatch('kos:login-success', {});
+          }
         }
       }, 450);
     },
@@ -805,6 +1005,12 @@
     },
 
     _escAttr(s) { return this._escHtml(s); },
+
+    /* Format a megabyte value as MB or GB for display */
+    _fmtMB(mb) {
+      mb = Math.round(Number(mb) || 0);
+      return mb >= 1024 ? `${(mb / 1024).toFixed(mb % 1024 === 0 ? 0 : 1)} GB` : `${mb} MB`;
+    },
   };
 
   global.KOSSetup = KOSSetup;

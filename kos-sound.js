@@ -328,6 +328,8 @@ window.KOSSound = (() => {
     KOSBus.on('kos:sleep',         () => play('lock'));
     KOSBus.on('kos:restart',       () => play('lock'));
     KOSBus.on('kos:shutdown',      () => play('lock'));
+    KOSBus.on('kos:fs-quota-warning',  () => play('notify'));
+    KOSBus.on('kos:fs-quota-exceeded', () => play('error'));
   }
 
   if (document.readyState === 'loading') {

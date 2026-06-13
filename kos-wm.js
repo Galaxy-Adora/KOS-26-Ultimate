@@ -202,10 +202,23 @@ const WM = {
     localStorage.setItem(KEY_SESSION, JSON.stringify(state));
   },
 
-  restoreSession() {
+ restoreSession() {
     let raw;
     try { raw = JSON.parse(localStorage.getItem(KEY_SESSION)); } catch { return; }
     if (!raw) return;
+
+    /* ── Clean slate: remove any stale maximize/snap topbar shape
+       classes and leftover floating control panels from a previous
+       session before restoring — prevents both topbar-snap-left
+       AND topbar-snap-right (or topbar-maximized) controls from
+       appearing simultaneously on restart. ── */
+    document.querySelector('.topbar')?.classList.remove(
+      'topbar-maximized', 'topbar-snap-left', 'topbar-snap-right'
+    );
+    document.getElementById('topbar-win-controls')?.remove();
+    document.getElementById('topbar-snap-left')?.remove();
+    document.getElementById('topbar-snap-right')?.remove();
+
     Object.entries(raw).forEach(([id, s]) => {
       const app = AppManifest.find(a => a.id === id);
       if (!app || !app.initData) return;
@@ -222,14 +235,24 @@ const WM = {
       if (s.top)    w.el.style.top    = s.top;
       if (s.width)  w.el.style.width  = s.width;
       if (s.height) w.el.style.height = s.height;
+
       if (s.open) {
+        if (s.maximized) w.el.classList.add('win-maximized');
+        else if (s.snapped) w.el.classList.add(
+          s.snapped === 'left' ? 'win-snapped-left' : 'win-snapped-right'
+        );
+
         this.open(id);
+
+        if (s.maximized) {
+          this.maximize(id);
+        } else if (s.snapped) {
+          this._snapWindow(id, s.snapped);
+        }
         if (s.minimized) this.minimize(id);
-        if (s.maximized) this.maximize(id);
       }
     });
   },
-
   clearSession() { localStorage.removeItem(KEY_SESSION); },
 
   /* ═══════════════════════════════════════════════════════════
@@ -318,6 +341,14 @@ const WM = {
     ctrl.dataset.winId = id;
     ctrl.dataset.zone  = zone;
 
+    /* Reshape the topbar into the flattened "maximized-style" navbar and
+       reserve room on the matching edge. If a window is already snapped
+       on the other side, that edge's reservation stays in place too —
+       handled purely via the two independent classes below. */
+    document.querySelector('.topbar')?.classList.add(
+      zone === 'left' ? 'topbar-snap-left' : 'topbar-snap-right'
+    );
+
     ctrl.innerHTML = `
       <button class="win-ctrl-btn twc-btn" data-action="minimize" title="Minimize">
         <i class="fa-solid fa-minus"></i>
@@ -354,11 +385,22 @@ const WM = {
   _clearSnapControls(id) {
     const w = this.registry[id];
     if (!w?.snapped) return;
-    const panelId = w.snapped === 'left' ? 'topbar-snap-left' : 'topbar-snap-right';
+    const zone    = w.snapped;
+    const panelId = zone === 'left' ? 'topbar-snap-left' : 'topbar-snap-right';
     const ctrl = document.getElementById(panelId);
     if (ctrl && ctrl.dataset.winId === id) {
       ctrl.classList.remove('snap-ctrl-visible');
       setTimeout(() => { ctrl.parentNode && ctrl.remove(); }, 320);
+      /* Un-reserve this edge of the topbar — but only if no other open,
+         non-minimized window is still snapped to this same zone. */
+      const stillSnapped = Object.entries(this.registry).some(([wId, ww]) =>
+        wId !== id && ww.open && !ww.minimized && ww.snapped === zone
+      );
+      if (!stillSnapped) {
+        document.querySelector('.topbar')?.classList.remove(
+          zone === 'left' ? 'topbar-snap-left' : 'topbar-snap-right'
+        );
+      }
     }
   },
 
@@ -491,7 +533,84 @@ const WM = {
   /* ═══════════════════════════════════════════════════════════
      REGISTER WINDOW
   ═══════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════
+     DRAG-TO-RESTORE FROM TOPBAR
+     When a window is maximized or snapped (left/right/both), its
+     own titlebar is collapsed to 0px. To still let the user "pull"
+     it back into a floating window, clicking+dragging on any empty
+     part of the topbar (not on the menu, clock, or injected window
+     controls) restores the focused maximized/snapped window to a
+     floating window under the cursor and immediately starts a drag.
+  ═══════════════════════════════════════════════════════════ */
+  _initTopbarDragRestore() {
+    if (this._topbarDragInit) return;
+    this._topbarDragInit = true;
+
+    const topbar = document.querySelector('.topbar');
+    if (!topbar) return;
+
+    topbar.addEventListener('mousedown', e => {
+      /* Ignore clicks on real topbar UI: menus, clock, injected
+         maximize/snap window controls, dropdowns, etc. */
+      if (e.target.closest('.menu') ||
+          e.target.closest('.dropdown-menu') ||
+          e.target.closest('.theme-toggle') ||
+          e.target.closest('#topbar-win-controls') ||
+          e.target.closest('#topbar-snap-left') ||
+          e.target.closest('#topbar-snap-right') ||
+          e.target.closest('.win-ctrl-btn')) return;
+
+      const id = this._focusedId;
+      const w  = id && this.registry[id];
+      if (!w || !w.open || w.minimized) return;
+      if (!w.maximized && !w.snapped) return;
+
+      const wasMaximized = w.maximized;
+      const wasSnapped   = w.snapped;
+
+      /* Restore to floating geometry (clears classes/controls/topbar shape). */
+      if (wasMaximized) {
+        this._clearTopbarControls();
+        w.el.classList.remove('win-maximized', 'win-animating');
+        w.maximized = false;
+      } else if (wasSnapped) {
+        this._unsnapWindow(id);
+      }
+
+      if (w.savedRect) {
+        const r = w.savedRect;
+        Object.assign(w.el.style, { left: r.left, top: r.top, width: r.width, height: r.height });
+      }
+
+      /* Re-position so the window appears to be grabbed from under
+         the cursor — center the titlebar horizontally on the
+         pointer, and place its top edge just below the topbar. */
+      const winW = w.el.offsetWidth || 500;
+      const newLeft = Math.max(0, Math.min(e.clientX - winW / 2, window.innerWidth - 100));
+      const newTop  = this.TOPBAR_H + 8;
+      w.el.style.left = newLeft + 'px';
+      w.el.style.top  = newTop + 'px';
+
+      const maxBtn = w.el.querySelector('.win-ctrl-btn[data-action="maximize"] i');
+      if (maxBtn) maxBtn.className = 'fa-solid fa-window-maximize';
+
+      this.focus(id);
+
+      /* Hand off to the window's own drag machinery, starting from
+         the freshly-set geometry. */
+      const startDrag = this._dragHandles?.[id];
+      if (startDrag) {
+        startDrag(e, newLeft, newTop);
+      } else {
+        this._scheduleSave();
+      }
+    });
+  },
+
   register(app) {
+    /* One-time: wire up "drag empty topbar to un-maximize/un-snap" */
+    this._initTopbarDragRestore();
+
     const id  = typeof app === 'string' ? app : app.id;
     const cfg = typeof app === 'string' ? {} : (app.initData || {});
     const el  = document.getElementById('win-' + id);
@@ -599,6 +718,22 @@ const WM = {
     const SNAP_TOP_PX  = this.TOPBAR_H + 8;
     const SNAP_EDGE_PX = 12;
 
+    /* Begin a drag from an arbitrary starting mouse position/offset.
+       Shared by the titlebar mousedown handler below AND by the
+       topbar "drag to un-maximize/un-snap" handler. */
+    const startDrag = (e, startLeft, startTop) => {
+      sx = e.clientX; sy = e.clientY;
+      sl = startLeft; st = startTop;
+      _cachedW = w.el.offsetWidth;
+      w.el.style.willChange = 'left, top';
+      w.el.classList.add('win-dragging');
+      dragging = true;
+      this.focus(id);
+      e.preventDefault();
+    };
+    this._dragHandles = this._dragHandles || {};
+    this._dragHandles[id] = startDrag;
+
     handle.addEventListener('mousedown', e => {
       if (e.target.closest('.win-ctrl-btn') || e.target.closest('.br-tab') ||
           e.target.closest('.br-newtab-btn') || e.target.closest('.br-tab-x')) return;
@@ -606,22 +741,10 @@ const WM = {
 
       if (w.snapped) {
         this._unsnapWindow(id);
-        sl = parseInt(w.el.style.left) || 0;
-        st = parseInt(w.el.style.top)  || 0;
-        sx = e.clientX;
-        sy = e.clientY;
+        startDrag(e, parseInt(w.el.style.left) || 0, parseInt(w.el.style.top) || 0);
       } else {
-        sx = e.clientX; sy = e.clientY;
-        sl = parseInt(w.el.style.left) || 0;
-        st = parseInt(w.el.style.top)  || 0;
+        startDrag(e, parseInt(w.el.style.left) || 0, parseInt(w.el.style.top) || 0);
       }
-
-      _cachedW = w.el.offsetWidth;
-      w.el.style.willChange = 'left, top';
-      w.el.classList.add('win-dragging');
-      dragging = true;
-      this.focus(id);
-      e.preventDefault();
     });
 
     document.addEventListener('mousemove', e => {
@@ -678,15 +801,15 @@ const WM = {
       width: w.el.style.width, height: w.el.style.height,
     };
 
-    const tb = this.TOPBAR_H;
+    const SNAP_TOPBAR_H = 44; /* matches flattened (snapped/maximized) topbar height */
     w.el.classList.add('win-animating');
 
     if (zone === 'left') {
-      Object.assign(w.el.style, { left:'0px', top: tb+'px', width:'50vw', height:`calc(100vh - ${tb}px)` });
+      Object.assign(w.el.style, { left:'0px', top: SNAP_TOPBAR_H+'px', width:'50vw', height:`calc(100vh - ${SNAP_TOPBAR_H}px)` });
       w.el.classList.add('win-snapped-left');
       w.el.classList.remove('win-snapped-right');
     } else {
-      Object.assign(w.el.style, { left:'50vw', top: tb+'px', width:'50vw', height:`calc(100vh - ${tb}px)` });
+      Object.assign(w.el.style, { left:'50vw', top: SNAP_TOPBAR_H+'px', width:'50vw', height:`calc(100vh - ${SNAP_TOPBAR_H}px)` });
       w.el.classList.add('win-snapped-right');
       w.el.classList.remove('win-snapped-left');
     }
@@ -718,8 +841,7 @@ const WM = {
       document.body.appendChild(ghost);
     }
 
-    const tb = this.TOPBAR_H;
-    Object.assign(ghost.style, { top: tb+'px', bottom:'0', left:'', right:'', width:'' });
+    Object.assign(ghost.style, { top: '44px', bottom:'0', left:'', right:'', width:'' });
 
     if (zone === 'top') {
       Object.assign(ghost.style, { left:'0', right:'0' });

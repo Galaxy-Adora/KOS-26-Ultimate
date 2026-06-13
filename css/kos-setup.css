@@ -532,6 +532,40 @@ body:not(.dark) .kos-setup-tgl-label { color: rgba(0,0,0,0.78); }
 }
 body:not(.dark) .kos-setup-tgl-sub { color: rgba(0,0,0,0.38); }
 
+/* Toggle switch (used for Glass UI, Sound, etc.) */
+.toggle-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.10);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+body:not(.dark) .toggle-switch:not(.on) {
+  background: rgba(0,0,0,0.10);
+  border-color: rgba(0,0,0,0.08);
+}
+.toggle-switch .toggle-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+  transition: transform 0.2s cubic-bezier(.4,0,.2,1);
+}
+.toggle-switch.on {
+  background: #007aff;
+  border-color: #007aff;
+}
+.toggle-switch.on .toggle-knob {
+  transform: translateX(20px);
+}
+
+
 /* Avatar section */
 .kos-setup-avatar-section { margin-top: 2px; }
 

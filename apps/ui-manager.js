@@ -610,18 +610,89 @@ window.KOSApps.uimanager = {
     return `<div style="padding:24px; color:var(--st-txt2);">Feature approaching implementation.</div>`; 
   },
 
-  /* ─── About ─── */
+ /* ─── About ─── */
   _renderAbout() {
+    const V = window.KOS_VERSION || {};
+
+    const infoRows = [
+      { label: 'Version',       value: V.version    || '—' },
+      { label: 'Build',         value: V.build       || '—' },
+      { label: 'Build Type',    value: V.buildLabel  || '—' },
+      { label: 'Stability',     value: V.buildStability || '—' },
+      { label: 'Code Name',     value: V.codeName    || '—' },
+      { label: 'Release Date',  value: V.releaseDate || '—' },
+    ];
+
     return `
       <div class="st-sec-head">
         <div class="st-sec-ico" style="background:#8E8E93"><i class="fa-solid fa-circle-info"></i></div>
         <div>
           <div class="st-sec-title">About KOS</div>
-          <div class="st-sec-sub">System architecture data</div>
+          <div class="st-sec-sub">System version, build details and credits</div>
         </div>
+      </div>
+
+      <!-- Identity card — mirrors app icon + name treatment used elsewhere -->
+      <div class="st-card" style="padding: 24px 16px; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;">
+        <div class="app-icon icon-uimanager" style="width:72px; height:72px; font-size:2rem;">
+          <i class="fa-solid fa-circle-info"></i>
+        </div>
+        <div>
+          <div style="font-size:1.15rem; font-weight:700; color:var(--st-txt1, #111);">${V.displayProduct || 'KOS Ultimate'}</div>
+          <div style="font-size:0.85rem; color:var(--st-txt2); margin-top:2px;">${V.tagline || ''}</div>
+        </div>
+        <div class="uim-pw-badge set" style="margin-top:4px;">
+          <i class="fa-solid fa-tag"></i>
+          <span>${V.displayBadge || ''} &middot; ${V.buildLabel || ''}</span>
+        </div>
+      </div>
+
+      <!-- Version / build details ─ key-value rows -->
+      <div class="st-card">
+        <div class="st-clabel">Version Information</div>
+        ${infoRows.map((row, i) => `
+          ${i > 0 ? '<div class="st-div"></div>' : ''}
+          <div class="st-row">
+            <div class="st-rl">
+              <div class="st-rlabel">${row.label}</div>
+            </div>
+            <div class="st-rsub" style="text-align:right; font-weight:600;">${row.value}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Developer / credits -->
+      <div class="st-card">
+        <div class="st-clabel">Developer</div>
+        <div class="st-row">
+          <div class="st-rl">
+            <div class="st-rlabel">${V.developer || '—'}</div>
+            <div class="st-rsub">${V.devHandle || ''}</div>
+          </div>
+          <button class="dp-reset-btn" onclick="window.open('${V.website || '#'}','_blank')">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Visit Site
+          </button>
+        </div>
+        <div class="st-div"></div>
+        <div class="st-row">
+          <div class="st-rl">
+            <div class="st-rsub">${V.copyright || ''}</div>
+          </div>
+        </div>
+        <div class="st-div"></div>
+        <div class="st-row">
+          <div class="st-rl">
+            <div class="st-rsub">${V.license || ''}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Refresh button to reload version info from KOS_VERSION -->
+      <div class="st-card" style="padding:12px 16px; text-align:center;">
+        <button class="dp-reset-btn" onclick="KOSApps.uimanager.navigate('about')">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh Version Info
+        </button>
       </div>`;
   },
-
   _onSearch(raw) {
     this._searchQ = raw.trim();
     const xBtn = document.getElementById('st-search-x');
